@@ -27,11 +27,6 @@ const Login = () => {
     window.location.href = `${apiUrl}/auth/google`;
   };
 
-  const handleGithubLogin = () => {
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-    window.location.href = `${apiUrl}/auth/github`;
-  };
-
   return (
     <div className="flex items-center justify-center min-h-[calc(100vh-100px)] p-8">
       <div className="w-full max-w-[440px] p-10 glass-panel animate-fade-in">
@@ -70,9 +65,6 @@ const Login = () => {
         <div className="flex flex-col gap-4 mb-8">
           <Button variant="secondary" fullWidth onClick={handleGoogleLogin}>
              Google
-          </Button>
-          <Button variant="secondary" fullWidth onClick={handleGithubLogin}>
-            GitHub
           </Button>
         </div>
 
