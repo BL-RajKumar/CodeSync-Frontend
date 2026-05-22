@@ -1,0 +1,152 @@
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { toast } from 'react-hot-toast';
+import { ShieldAlert, Loader2, Link2, Users, Calendar, Folder, FileCode, Radio } from 'lucide-react';
+import { Link } from 'react-router-dom';
+
+const AdminActiveSessions = () => {
+  const [sessions, setSessions] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchSessions = async () => {
+    setIsLoading(true);
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const res = await axios.get(`${apiUrl}/admin/sessions`, { withCredentials: true });
+      setSessions(res.data.sessions || []);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to retrieve active sessions');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSessions();
+    // Refresh sessions status every 30 seconds
+    const interval = setInterval(fetchSessions, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-[#0b0b14] text-main px-4 py-8 md:px-12 md:py-16 font-sans">
+      <div className="max-w-7xl mx-auto space-y-8 animate-fade-in">
+        
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-6">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-indigo-400 bg-clip-text text-transparent flex items-center gap-2">
+              Active Sessions
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+              </span>
+            </h1>
+            <p className="text-muted text-sm mt-1">
+              Platform-wide live monitoring of all active collaborative editor workspaces.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-xs font-semibold text-primary shadow-lg backdrop-blur-md">
+            <ShieldAlert size={14} />
+            Administrator Mode Active
+          </div>
+        </div>
+
+        {/* Sessions Grid */}
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-3 text-muted">
+            <Loader2 size={36} className="animate-spin text-primary" />
+            <span className="text-sm font-medium">Scanning live workspace rooms...</span>
+          </div>
+        ) : sessions.length === 0 ? (
+          <div className="text-center py-20 text-muted bg-white/5 border border-white/10 rounded-2xl">
+            <Radio size={48} className="mx-auto text-white/10 mb-4 animate-pulse" />
+            <p className="text-lg font-medium text-white/60">No active sessions at the moment</p>
+            <p className="text-xs text-white/20 mt-1">When developers start sharing code, their live channels will show up here.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {sessions.map((session) => (
+              <div 
+                key={session.sessionId} 
+                className="bg-white/5 border border-white/10 rounded-2xl p-6 relative backdrop-blur-lg shadow-xl hover:border-primary/30 hover:shadow-primary/5 transition-all duration-350 flex flex-col justify-between"
+              >
+                {/* Live Pulse Badge */}
+                <div className="absolute top-4 right-4 flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[0.65rem] font-bold tracking-wide uppercase">
+                  <span className="h-1 w-1 rounded-full bg-emerald-400 animate-pulse" />
+                  Live
+                </div>
+
+                <div className="space-y-4">
+                  {/* Session Id */}
+                  <div>
+                    <span className="text-xs font-bold text-primary uppercase tracking-wider">Session Room</span>
+                    <h3 className="text-sm font-mono text-white/80 mt-0.5 truncate select-all" title="Click to select session ID">
+                      {session.sessionId}
+                    </h3>
+                  </div>
+
+                  {/* Project & File Metadata */}
+                  <div className="space-y-2.5 bg-white/2 p-3.5 rounded-xl border border-white/5">
+                    <div className="flex items-center gap-2 text-xs text-muted">
+                      <Folder size={14} className="text-primary/70" />
+                      <span className="font-semibold text-white/70 truncate">
+                        {session.projectId?.name || 'Deleted Project'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted border-t border-white/5 pt-2.5">
+                      <FileCode size={14} className="text-indigo-400/70" />
+                      <span className="font-mono text-white/60 truncate">
+                        {session.fileId?.name || 'Deleted File'}
+                      </span>
+                      <span className="text-[0.6rem] uppercase bg-white/5 border border-white/10 text-muted px-1.5 py-0.5 rounded font-sans">
+                        {session.language}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Host User Info */}
+                  <div className="flex items-center gap-3 bg-white/2 p-3 rounded-xl border border-white/5">
+                    {session.ownerId?.avatarUrl ? (
+                      <img src={session.ownerId.avatarUrl} alt="Host Avatar" className="w-9 h-9 rounded-full object-cover border border-white/10" />
+                    ) : (
+                      <div className="w-9 h-9 rounded-full bg-[#131324] border border-white/10 flex items-center justify-center text-muted font-bold text-xs uppercase">
+                        {session.ownerId?.username?.charAt(0) || 'H'}
+                      </div>
+                    )}
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-xs font-bold text-muted">Host / Creator</span>
+                      <span className="text-sm font-semibold text-main truncate">@{session.ownerId?.username || 'unknown'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer Controls */}
+                <div className="border-t border-white/5 pt-4 mt-5 flex items-center justify-between text-xs text-muted">
+                  {/* Participant count */}
+                  <div className="flex items-center gap-1.5 font-medium">
+                    <Users size={14} className="text-primary/60" />
+                    <span>{session.participants?.length || 0} / {session.maxParticipants} joined</span>
+                  </div>
+
+                  {/* Direct connection */}
+                  <Link 
+                    to={`/collab/${session.sessionId}`}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 transition-all duration-200"
+                  >
+                    <Link2 size={12} />
+                    Inspect Room
+                  </Link>
+                </div>
+
+              </div>
+            ))}
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+};
+
+export default AdminActiveSessions;

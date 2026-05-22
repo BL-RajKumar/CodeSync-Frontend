@@ -1,0 +1,170 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply font-sans bg-dark text-main min-h-screen antialiased;
+    background-image: 
+      radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.08), transparent 25%),
+      radial-gradient(circle at 85% 30%, rgba(16, 185, 129, 0.05), transparent 25%);
+    background-attachment: fixed;
+  }
+}
+
+@layer utilities {
+  .glass-panel {
+    @apply bg-card backdrop-blur-[12px] border border-white/5 rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.3)];
+  }
+  
+  .animate-fade-in {
+    animation: fadeIn 0.4s ease-out forwards;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-dark;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  @apply rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Monaco search result line highlight */
+.search-highlight-line {
+  background-color: rgba(234, 179, 8, 0.15) !important;
+  border-left: 2px solid rgba(234, 179, 8, 0.6) !important;
+  animation: searchHighlightFade 2s ease-out forwards;
+}
+
+@keyframes searchHighlightFade {
+  0% { background-color: rgba(234, 179, 8, 0.25); }
+  70% { background-color: rgba(234, 179, 8, 0.15); }
+  100% { background-color: transparent; }
+}
+
+/* Remote collaborator cursor styles */
+.remote-cursor {
+  background-color: rgba(96, 165, 250, 0.3) !important;
+  border-left: 2px solid rgba(96, 165, 250, 0.8) !important;
+}
+
+.remote-cursor-line {
+  border-left: 2px solid rgba(96, 165, 250, 0.6);
+}
+
+.remote-cursor-label-text {
+  color: rgba(96, 165, 250, 0.7);
+  font-size: 10px;
+  font-style: italic;
+  padding-left: 4px;
+}
+
+/* ── Code Sandbox / Terminal Output ─────────────── */
+@keyframes sandboxSlideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-sandbox-slide-in {
+  animation: sandboxSlideIn 0.25s ease-out forwards;
+}
+
+/* Blinking dot loader for "Running..." state */
+.sandbox-dots {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+.sandbox-dots span {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.5);
+  animation: sandboxDotPulse 1.2s ease-in-out infinite;
+}
+.sandbox-dots span:nth-child(2) { animation-delay: 0.2s; }
+.sandbox-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes sandboxDotPulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.85); }
+  50%       { opacity: 1;   transform: scale(1.15); }
+}
+
+/* Subtle line-by-line fade for output text */
+.sandbox-output-lines {
+  animation: sandboxSlideIn 0.3s ease-out forwards;
+}
+
+/* ── UC22: Stream Viewer search highlight ── */
+.stream-viewer-output mark {
+  background-color: rgba(250, 204, 21, 0.28);
+  color: #fef08a;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+/* Thin scrollbar for stream output pane */
+.stream-viewer-output::-webkit-scrollbar { width: 5px; height: 5px; }
+.stream-viewer-output::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 9999px; }
+
+/* ── UC23: Cancel button pulsing border ── */
+@keyframes pulseBorder {
+  0%, 100% { border-color: rgba(239, 68, 68, 0.4); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+  50%       { border-color: rgba(239, 68, 68, 0.8); box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1); }
+}
+.animate-pulse-border {
+  animation: pulseBorder 1.4s ease-in-out infinite;
+}
+
+/* ── Code Review Comment Glyphs ── */
+.comment-glyph-marker {
+  background: rgba(99, 102, 241, 0.2) !important;
+  border-radius: 4px;
+  cursor: pointer;
+  position: relative;
+  width: 16px !important;
+  height: 16px !important;
+  left: 4px !important;
+}
+.comment-glyph-marker::before {
+  content: '💬';
+  position: absolute;
+  left: 1px;
+  top: -1px;
+  font-size: 11px;
+}
+
+/* ── Custom Scrollbar for review/comment panels ── */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.35); /* Visible indigo primary accent! */
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.6); /* Glowing indigo on hover */
+}
