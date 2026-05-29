@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
@@ -16,7 +16,7 @@ import { MessageSquare } from 'lucide-react';
 
 const ProjectEditor = () => {
   const { projectId } = useParams();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { socket, connected } = useSocket();
@@ -34,6 +34,11 @@ const ProjectEditor = () => {
   const [collabParticipants, setCollabParticipants] = useState([]);
   const [shareLink, setShareLink] = useState('');
   const [isStartingCollab, setIsStartingCollab] = useState(false);
+
+  // Ref to hold the absolute latest code for each file (bypassing autosave delays)
+  const codeRef = useRef({});
+  // Ref to prevent auto-rejoining a session we were just kicked from
+  const kickedSessionIdRef = useRef(null);
 
   useEffect(() => {
     const fetchProjectAndFiles = async () => {
@@ -82,7 +87,8 @@ const ProjectEditor = () => {
   // ─── AUTO-JOIN session from URL params ──────────────
   useEffect(() => {
     const sessionParam = searchParams.get('session');
-    if (!sessionParam || !socket || !connected || collabSession) return;
+    // Don't auto-join if we don't have the param, or if we are already in a session, or if we were just kicked from THIS session
+    if (!sessionParam || !socket || !connected || collabSession || kickedSessionIdRef.current === sessionParam) return;
 
     const password = sessionStorage.getItem(`collab_pw_${sessionParam}`) || '';
     socket.emit('join-session', { sessionId: sessionParam, password });
@@ -93,7 +99,19 @@ const ProjectEditor = () => {
     if (!socket) return;
 
     const handleSessionJoined = (data) => {
-      setCollabSession({ sessionId: data.sessionId, ownerId: data.ownerId });
+      // Check if this is the active file (compare against searchParams file if data.fileId is missing)
+      const expectedFileId = data.fileId || searchParams.get('file');
+      if (selectedFile && expectedFileId && selectedFile.fileId !== expectedFileId && selectedFile._id !== expectedFileId) return;
+      
+      setCollabSession(prev => {
+        // Prevent object reference change if data is same
+        if (prev && prev.sessionId === data.sessionId) return prev;
+        return {
+          sessionId: data.sessionId,
+          ownerId: data.ownerId,
+          language: data.language,
+        };
+      });
       setCollabParticipants(data.participants || []);
 
       // Set the file content from the live session
@@ -101,8 +119,7 @@ const ProjectEditor = () => {
         setSelectedFile(prev => ({ ...prev, content: data.fileContent }));
       }
 
-      const frontendUrl = import.meta.env.VITE_FRONTEND_URL || 'http://localhost:5173';
-      setShareLink(`${frontendUrl}/collab/${data.sessionId}`);
+      setShareLink(`${window.location.origin}/collab/${data.sessionId}`);
       toast.success('Joined collaboration session!');
     };
 
@@ -120,10 +137,22 @@ const ProjectEditor = () => {
       toast(`${userData.username} left`, { icon: '👋' });
     };
 
-    const handleSessionEnded = ({ message }) => {
+    const handleSessionEnded = ({ message, revertedContent }) => {
       setCollabSession(null);
       setCollabParticipants([]);
       setShareLink('');
+      
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('session');
+      newParams.delete('file');
+      newParams.delete('sessionPassword');
+      setSearchParams(newParams, { replace: true });
+      
+      if (revertedContent !== undefined) {
+        setSelectedFile(prev => prev ? { ...prev, content: revertedContent } : null);
+        setFiles(prev => prev.map(f => f.fileId === selectedFile?.fileId ? { ...f, content: revertedContent } : f));
+      }
+      
       toast(message || 'Session ended', { icon: '🔴' });
     };
 
@@ -134,11 +163,22 @@ const ProjectEditor = () => {
     const handleParticipantKicked = ({ kickedUserId, kickedUsername, message }) => {
       const myId = user?.userId || user?._id;
       if (kickedUserId === myId) {
-        // I was kicked — leave the session
+        // I was kicked — mark the session to prevent auto-rejoin race condition
+        kickedSessionIdRef.current = collabSession?.sessionId || searchParams.get('session');
+        
+        // leave the session
         socket.emit('leave-session');
         setCollabSession(null);
         setCollabParticipants([]);
         setShareLink('');
+        
+        // Remove session parameters from URL so we don't automatically rejoin
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete('session');
+        newParams.delete('file');
+        newParams.delete('sessionPassword');
+        setSearchParams(newParams, { replace: true });
+        
         toast.error('You have been removed from the session by the host.');
       } else {
         toast(`${kickedUsername} was removed`, { icon: '🚫' });
@@ -163,13 +203,19 @@ const ProjectEditor = () => {
   }, [socket, selectedFile]);
 
   // ─── Cleanup: leave session on unmount ──────────────
+  // Use a ref to track the current sessionId so we don't trigger cleanup on every render
+  const currentSessionId = React.useRef(null);
+  useEffect(() => {
+    currentSessionId.current = collabSession?.sessionId;
+  }, [collabSession?.sessionId]);
+
   useEffect(() => {
     return () => {
-      if (socket && collabSession) {
+      if (socket && currentSessionId.current) {
         socket.emit('leave-session');
       }
     };
-  }, [socket, collabSession]);
+  }, [socket]);
 
   // ─── START COLLABORATION ────────────────────────────
   const handleStartCollab = useCallback(async () => {
@@ -183,8 +229,8 @@ const ProjectEditor = () => {
         fileId: selectedFile.fileId || selectedFile._id,
       }, { withCredentials: true });
 
-      const { sessionId, shareLink: link } = response.data;
-      setShareLink(link);
+      const { sessionId } = response.data;
+      setShareLink(`${window.location.origin}/collab/${sessionId}`);
 
       // Join the session via socket
       if (socket) {
@@ -198,21 +244,41 @@ const ProjectEditor = () => {
   }, [selectedFile, user, projectId, socket]);
 
   // ─── END COLLABORATION ──────────────────────────────
-  const handleEndCollab = useCallback(async () => {
+  const handleEndCollab = useCallback(async (discard = false) => {
     if (!collabSession) return;
 
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      await axios.post(`${apiUrl}/collab/${collabSession.sessionId}/end`, {}, { withCredentials: true });
+      const response = await axios.post(`${apiUrl}/collab/${collabSession.sessionId}/end`, {
+        discardChanges: discard
+      }, { withCredentials: true });
 
       setCollabSession(null);
       setCollabParticipants([]);
       setShareLink('');
-      toast.success('Collaboration session ended');
+      
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('session');
+      newParams.delete('file');
+      newParams.delete('sessionPassword');
+      setSearchParams(newParams, { replace: true });
+      
+      // Update UI with reverted content directly from HTTP response for perfect reflection
+      if (discard && response.data.revertedContent !== undefined) {
+        setSelectedFile(prev => prev ? { ...prev, content: response.data.revertedContent } : null);
+        setFiles(prev => prev.map(f => f.fileId === (selectedFile?.fileId || selectedFile?._id) ? { ...f, content: response.data.revertedContent } : f));
+        
+        // Also update the live codeRef so Sandbox reflects the discard instantly
+        if (codeRef.current && (selectedFile?.fileId || selectedFile?._id)) {
+          codeRef.current[selectedFile.fileId || selectedFile._id] = response.data.revertedContent;
+        }
+      }
+      
+      toast.success(discard ? 'Session ended and changes discarded' : 'Collaboration session ended');
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to end session');
     }
-  }, [collabSession]);
+  }, [collabSession, searchParams, setSearchParams, selectedFile]);
 
   const handleKickParticipant = useCallback((targetUserId) => {
     if (!collabSession || !socket) return;
@@ -275,7 +341,7 @@ const ProjectEditor = () => {
     }
   };
 
-  const handleSaveFileContent = async (fileId, newContent) => {
+  const handleSaveFileContent = async (fileId, newContent, isAutoSave = false) => {
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
       const response = await axios.put(`${apiUrl}/files/${fileId}/content`, {
@@ -295,10 +361,14 @@ const ProjectEditor = () => {
         setSelectedFile(prev => ({ ...prev, content: newContent }));
       }
       
-      toast.success('File saved');
+      if (!isAutoSave) {
+        toast.success('File saved');
+      }
     } catch (error) {
       console.error('Save error:', error);
-      toast.error(error.response?.data?.message || 'Failed to save file');
+      if (!isAutoSave) {
+        toast.error(error.response?.data?.message || 'Failed to save file');
+      }
       throw error; // Rethrow to CodeEditor so it stops the saving spinner
     }
   };
@@ -523,7 +593,7 @@ const ProjectEditor = () => {
             />
           )}
           {sidebarTab === 'run' && (
-            <SandboxPanel file={selectedFile} />
+            <SandboxPanel file={selectedFile} codeRef={codeRef} />
           )}
           {sidebarTab === 'snapshots' && (
             <SnapshotPanel 
@@ -570,6 +640,7 @@ const ProjectEditor = () => {
               projectId={projectId}
               currentUser={user}
               snapshotId={selectedFile?.snapshotId || null}
+              codeRef={codeRef}
             />
           </div>
         ) : (

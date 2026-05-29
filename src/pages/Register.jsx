@@ -20,7 +20,10 @@ const Register = () => {
     setLoading(true);
     const success = await register(username, email, password, fullName);
     setLoading(false);
-    if (success) {
+    
+    if (success === 'requires_verification') {
+      navigate('/login');
+    } else if (success) {
       navigate('/dashboard');
     }
   };

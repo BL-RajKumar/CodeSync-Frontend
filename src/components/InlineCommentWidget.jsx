@@ -2,8 +2,25 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { Send, Loader2, Check, Edit2, Trash2, X, Reply, MessageSquare } from 'lucide-react';
+import MentionInput from './MentionInput';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+const renderContentWithMentions = (content) => {
+  if (!content) return null;
+  // Split by @username, keeping the delimiter in the resulting array
+  const parts = content.split(/(@\w+)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('@') && part.length > 1) {
+      return (
+        <span key={i} className="text-primary font-bold bg-primary/20 px-1 rounded inline-block shadow-sm">
+          {part}
+        </span>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
+};
 
 const CommentItem = ({ comment, currentUser, onUpdate, isReply = false }) => {
   const [editing, setEditing] = useState(false);
@@ -82,8 +99,12 @@ const CommentItem = ({ comment, currentUser, onUpdate, isReply = false }) => {
         {/* Author & meta */}
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-full bg-primary/30 flex items-center justify-center text-[10px] font-bold text-primary">
-              {comment.authorId?.username?.charAt(0)?.toUpperCase() || '?'}
+            <div className="w-6 h-6 rounded-full bg-primary/30 flex items-center justify-center text-[10px] font-bold text-primary overflow-hidden">
+              {comment.authorId?.avatarUrl ? (
+                <img src={comment.authorId.avatarUrl} alt={comment.authorId.username} className="w-full h-full object-cover" />
+              ) : (
+                comment.authorId?.username?.charAt(0)?.toUpperCase() || '?'
+              )}
             </div>
             <span className="text-xs font-semibold text-main">{comment.authorId?.username || 'User'}</span>
             <span className="text-[10px] text-muted">Line {comment.lineNumber}</span>
@@ -114,10 +135,11 @@ const CommentItem = ({ comment, currentUser, onUpdate, isReply = false }) => {
         {/* Content / Edit mode */}
         {editing ? (
           <div className="flex gap-1.5">
-            <textarea
+            <MentionInput
+              multiline
               value={editContent}
               onChange={e => setEditContent(e.target.value)}
-              className="flex-1 bg-[#1e1e2e] border border-white/10 rounded p-2 text-xs text-main outline-none resize-none min-h-[50px]"
+              className="w-full flex-1 bg-[#1e1e2e] border border-white/10 rounded p-2 text-xs text-main outline-none resize-none min-h-[50px] focus:border-primary"
             />
             <div className="flex flex-col gap-1">
               <button onClick={handleEdit} disabled={saving} className="p-1.5 rounded bg-primary/20 text-primary hover:bg-primary/30 transition-colors">
@@ -129,7 +151,9 @@ const CommentItem = ({ comment, currentUser, onUpdate, isReply = false }) => {
             </div>
           </div>
         ) : (
-          <p className="text-xs text-main/90 leading-relaxed whitespace-pre-wrap break-words">{comment.content}</p>
+          <p className="text-xs text-main/90 leading-relaxed whitespace-pre-wrap break-words">
+            {renderContentWithMentions(comment.content)}
+          </p>
         )}
 
         {/* Replies toggle pill (only on top-level and only if replies exist) */}
@@ -161,13 +185,12 @@ const CommentItem = ({ comment, currentUser, onUpdate, isReply = false }) => {
       {/* Reply input — always visible under top-level threads */}
       {!isReply && (
         <div className="mt-2.5 ml-6 flex gap-2 items-center bg-[#181825]/30 p-1.5 rounded-lg border border-white/5">
-          <input
-            type="text"
+          <MentionInput
             placeholder="Write a reply... (@mention supported)"
             value={replyContent}
             onChange={e => setReplyContent(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleReply()}
-            className="flex-1 bg-transparent px-2 py-1 text-xs text-main outline-none placeholder:text-muted/50"
+            className="w-full bg-transparent px-2 py-1 text-xs text-main outline-none placeholder:text-muted/50"
           />
           <button
             onClick={handleReply}
@@ -262,12 +285,13 @@ const InlineCommentWidget = ({
 
       {/* New comment input */}
       <div className="border-t border-white/10 p-3 flex gap-2 bg-[#181825]">
-        <textarea
+        <MentionInput
+          multiline
+          rows={2}
           placeholder="Add a code review comment... (@mention supported)"
           value={newComment}
           onChange={e => setNewComment(e.target.value)}
-          rows={2}
-          className="flex-1 bg-[#1e1e2e] border border-white/10 rounded p-2 text-xs text-main outline-none resize-none focus:border-primary"
+          className="w-full flex-1 bg-[#1e1e2e] border border-white/10 rounded p-2 text-xs text-main outline-none resize-none focus:border-primary"
         />
         <button
           onClick={handlePost}

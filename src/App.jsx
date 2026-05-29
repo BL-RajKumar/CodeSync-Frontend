@@ -114,10 +114,16 @@ function App() {
         <SocketProvider>
           <Toaster position="top-right" toastOptions={{
             style: {
-              background: 'var(--bg-card)',
-              color: 'var(--text-main)',
-              border: '1px solid var(--border-color)',
-              backdropFilter: 'var(--glass-blur)'
+              background: '#1a1d24',
+              color: '#f8f9fa',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+            },
+            success: {
+              iconTheme: { primary: '#10b981', secondary: '#1a1d24' }
+            },
+            error: {
+              iconTheme: { primary: '#ef4444', secondary: '#1a1d24' }
             }
           }} />
           <AppContent />

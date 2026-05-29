@@ -1,7 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import Input from '../components/Input';
 import Button from '../components/Button';
+import { Camera } from 'lucide-react';
+import { toast } from 'react-hot-toast';
+import axios from 'axios';
 
 const Profile = () => {
   const { user, updateProfile } = useAuth();
@@ -14,6 +17,8 @@ const Profile = () => {
     password: '',
   });
   const [loading, setLoading] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (user) {
@@ -29,6 +34,30 @@ const Profile = () => {
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formDataToUpload = new FormData();
+    formDataToUpload.append('image', file);
+
+    setUploadingImage(true);
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const res = await axios.post(`${apiUrl}/upload/avatar`, formDataToUpload, {
+        withCredentials: true,
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setFormData({ ...formData, avatarUrl: res.data.url });
+      toast.success('Image uploaded! Click Save Changes to update your profile.');
+    } catch (error) {
+      toast.error('Failed to upload image');
+      console.error(error);
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -62,11 +91,28 @@ const Profile = () => {
         <h2 className="text-3xl mb-8 border-b border-white/10 pb-4 font-bold">Profile Settings</h2>
         
         <div className="flex items-center gap-8 mb-10">
-          <img 
-            src={formData.avatarUrl || 'https://via.placeholder.com/100'} 
-            alt="Avatar Preview" 
-            className="w-[100px] h-[100px] rounded-full object-cover border-2 border-primary" 
-          />
+          <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+            <img 
+              src={formData.avatarUrl || 'https://via.placeholder.com/100'} 
+              alt="Avatar Preview" 
+              className={`w-[100px] h-[100px] rounded-full object-cover border-2 border-primary transition-opacity ${uploadingImage ? 'opacity-50' : 'opacity-100 group-hover:opacity-75'}`} 
+            />
+            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full bg-black/40">
+              <Camera className="w-6 h-6 text-white" />
+            </div>
+            {uploadingImage && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            )}
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              onChange={handleImageUpload} 
+              accept="image/*" 
+              className="hidden" 
+            />
+          </div>
           <div>
             <h3 className="text-2xl mb-1 font-semibold">{user.username}</h3>
             <p className="text-muted mb-3">{user.email} &bull; {user.role}</p>
@@ -96,16 +142,6 @@ const Profile = () => {
           </div>
 
           <div className="mb-6">
-            <label className="block mb-2 text-muted text-sm font-medium">Avatar URL</label>
-            <Input 
-              name="avatarUrl"
-              value={formData.avatarUrl}
-              onChange={handleChange}
-              placeholder="https://..."
-            />
-          </div>
-
-          <div className="mb-6">
             <label className="block mb-2 text-muted text-sm font-medium">Bio</label>
             <textarea 
               name="bio"
@@ -129,7 +165,7 @@ const Profile = () => {
           </div>
 
           <div className="mt-8 flex justify-end">
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || uploadingImage}>
               {loading ? 'Saving...' : 'Save Changes'}
             </Button>
           </div>
