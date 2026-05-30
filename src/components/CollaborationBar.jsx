@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { Users, Link2, X, Share2, Shield, Loader2, UserPlus, Send } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import axios from 'axios';
+import UserSearchInput from './UserSearchInput';
 
 const CollaborationBar = ({ session, participants, isOwner, onEndSession, onStartSession, onKickParticipant, shareLink, isStarting }) => {
   const [showInviteInput, setShowInviteInput] = useState(false);
   const [inviteUsername, setInviteUsername] = useState('');
   const [isInviting, setIsInviting] = useState(false);
+  const [showEndConfirm, setShowEndConfirm] = useState(false);
 
   const handleSendInvite = async (e) => {
     e.preventDefault();
@@ -16,7 +18,7 @@ const CollaborationBar = ({ session, participants, isOwner, onEndSession, onStar
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
       await axios.post(`${apiUrl}/collab/${session.sessionId}/invite`, {
-        username: inviteUsername.trim()
+        target: inviteUsername.trim()
       }, { withCredentials: true });
       
       toast.success(`Invitation sent to ${inviteUsername.trim()}!`);
@@ -124,12 +126,12 @@ const CollaborationBar = ({ session, participants, isOwner, onEndSession, onStar
       <div className="relative flex items-center">
         {showInviteInput ? (
           <form onSubmit={handleSendInvite} className="flex items-center gap-1 bg-[#1e1e2e]/90 border border-white/15 rounded-md px-2 py-0.5 shadow-lg border-primary/30">
-            <input 
-              type="text" 
-              placeholder="Username..." 
+            <UserSearchInput 
+              placeholder="Username or Email..." 
               value={inviteUsername}
               onChange={(e) => setInviteUsername(e.target.value)}
-              className="bg-transparent border-none text-[0.7rem] text-main w-24 focus:outline-none focus:ring-0 placeholder-white/20 p-0 px-1 py-0.5"
+              onSelectUser={(selectedIdentifier) => setInviteUsername(selectedIdentifier)}
+              className="bg-transparent border-none text-[0.7rem] text-main w-32 focus:outline-none focus:ring-0 placeholder-white/20 p-0 px-1 py-0.5"
               disabled={isInviting}
               autoFocus
             />
@@ -162,14 +164,43 @@ const CollaborationBar = ({ session, participants, isOwner, onEndSession, onStar
 
       {/* End session (owner only) */}
       {isOwner && (
-        <button
-          onClick={onEndSession}
-          className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all duration-150"
-          title="End collaboration session"
-        >
-          <X size={12} />
-          End
-        </button>
+        <div className="relative flex items-center ml-2 border-l border-white/10 pl-2">
+          {showEndConfirm ? (
+            <div className="flex items-center gap-1.5 animate-fade-in bg-red-500/10 border border-red-500/20 rounded-md px-2 py-1">
+              <span className="text-[10px] text-red-400 font-semibold mr-1 uppercase tracking-wider">End Session:</span>
+              <button
+                onClick={() => { setShowEndConfirm(false); onEndSession(false); }}
+                className="px-2 py-0.5 text-[10px] font-medium rounded bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors"
+                title="Save all changes made during this session"
+              >
+                Keep Changes
+              </button>
+              <button
+                onClick={() => { setShowEndConfirm(false); onEndSession(true); }}
+                className="px-2 py-0.5 text-[10px] font-medium rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+                title="Revert the file to its original state"
+              >
+                Discard Changes
+              </button>
+              <button
+                onClick={() => setShowEndConfirm(false)}
+                className="px-1.5 py-0.5 text-[10px] font-medium rounded hover:bg-white/10 text-muted transition-colors ml-1"
+                title="Cancel"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowEndConfirm(true)}
+              className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all duration-150"
+              title="End collaboration session"
+            >
+              <X size={12} />
+              End
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

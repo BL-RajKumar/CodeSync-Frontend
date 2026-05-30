@@ -347,7 +347,7 @@ const HighlightAll = ({ text }) => <>{text}</>;
 /* ═══════════════════════════════════════════════
    Main SandboxPanel
 ═══════════════════════════════════════════════ */
-const SandboxPanel = ({ file }) => {
+const SandboxPanel = ({ file, codeRef }) => {
   const [language,     setLanguage]     = useState(() => detectLanguage(file?.path));
   const [stdin,        setStdin]        = useState('');
   const [isRunning,    setIsRunning]    = useState(false);
@@ -379,11 +379,16 @@ const SandboxPanel = ({ file }) => {
     setIsCancelled(false);
     setOutput(null);
     try {
+      // Pull the absolute latest code directly from the editor's live ref, bypassing autosave
+      const latestCode = (codeRef && codeRef.current[file.fileId || file._id]) !== undefined 
+        ? codeRef.current[file.fileId || file._id] 
+        : (file.content || '');
+
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
       const { data } = await axios.post(
         `${apiUrl}/sandbox/run`,
         // UC24: pass fileId so backend saves it in history
-        { code: file.content || '', language, stdin, fileId: file._id || file.fileId || null },
+        { code: latestCode, language, stdin, fileId: file._id || file.fileId || null },
         { withCredentials: true, timeout: 15000, signal: controller.signal }
       );
       setOutput(data);

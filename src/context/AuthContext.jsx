@@ -44,6 +44,12 @@ export const AuthProvider = ({ children }) => {
   const register = async (username, email, password, fullName) => {
     try {
       const res = await api.post('/auth/register', { username, email, password, fullName });
+      
+      if (res.data.requiresVerification) {
+        toast.success(res.data.message, { duration: 6000 });
+        return 'requires_verification';
+      }
+      
       setUser(res.data);
       toast.success('Account created successfully!');
       return true;

@@ -59,6 +59,7 @@ const CodeEditor = ({
   projectId,
   currentUser,
   snapshotId,
+  codeRef,
 }) => {
   const [content, setContent] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -79,9 +80,15 @@ const CodeEditor = ({
 
   // Update local content when file changes
   useEffect(() => {
-    setContent(file?.content || '');
+    const initialContent = file?.content || '';
+    setContent(initialContent);
     setCommentWidget(null); // close any open widget when file changes
-  }, [file?.fileId, file?.content]);
+    
+    // Ensure codeRef has the latest database content on load
+    if (codeRef && (file?.fileId || file?._id)) {
+      codeRef.current[file.fileId || file._id] = initialContent;
+    }
+  }, [file?.fileId, file?.content, codeRef]);
 
   // Fetch inline comments for this file
   const fetchFileComments = useCallback(async () => {
@@ -226,7 +233,7 @@ const CodeEditor = ({
       const editor = editorRef.current;
       const model = editor.getModel();
 
-      if (model && changes) {
+      if (model && changes !== undefined) {
         // Apply the full content from remote
         const currentPosition = editor.getPosition();
         model.setValue(changes);
@@ -235,8 +242,16 @@ const CodeEditor = ({
           editor.setPosition(currentPosition);
         }
       }
+      
+      // Update codeRef so Sandbox can access the latest remote changes immediately
+      if (codeRef && (file?.fileId || file?._id)) {
+        codeRef.current[file.fileId || file._id] = changes;
+      }
 
-      isRemoteChange.current = false;
+      // Small delay to allow the editor to sync internal state before clearing flag
+      setTimeout(() => {
+        isRemoteChange.current = false;
+      }, 50);
     };
 
     const handleContentSync = ({ content: syncedContent }) => {
@@ -254,6 +269,11 @@ const CodeEditor = ({
       if (currentPosition) {
         editor.setPosition(currentPosition);
       }
+      
+      if (codeRef && (file?.fileId || file?._id)) {
+        codeRef.current[file.fileId || file._id] = syncedContent;
+      }
+      
       isRemoteChange.current = false;
     };
 
@@ -377,12 +397,16 @@ const CodeEditor = ({
 
   // ─── Handle local content changes ──────────────────
   const handleContentChange = useCallback((value) => {
-    const newValue = value || '';
-    setContent(newValue);
-
     // If this change is from a remote user, don't broadcast it back
     if (isRemoteChange.current) return;
 
+    const newValue = value || '';
+    setContent(newValue);
+    
+    if (codeRef && (file?.fileId || file?._id)) {
+      codeRef.current[file.fileId || file._id] = newValue;
+    }
+    
     // If in a collab session, broadcast the change
     if (socket && collabSession) {
       socket.emit('code-change', {
@@ -390,7 +414,7 @@ const CodeEditor = ({
         changes: newValue,
       });
     }
-  }, [socket, collabSession]);
+  }, [socket, collabSession, file]);
 
   // Scroll to a specific line when scrollToLine changes (from search results)
   useEffect(() => {
@@ -424,20 +448,20 @@ const CodeEditor = ({
     }
   }, [scrollToLine, file?.fileId]);
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async (isAutoSave = false) => {
     if (readOnly || isSaving) return;
     
     const currentContent = editorRef.current ? editorRef.current.getValue() : content;
     
     // Only save if content has actually changed
     if (currentContent === file.content) {
-      toast('No changes to save.', { icon: 'ℹ️' });
+      if (!isAutoSave) toast('No changes to save.', { icon: 'ℹ️' });
       return;
     }
 
-    setIsSaving(true);
+    if (!isAutoSave) setIsSaving(true);
     try {
-      await onSave(file.fileId, currentContent);
+      await onSave(file.fileId || file._id, currentContent, isAutoSave);
 
       // Sync content to collaborators after save
       if (socket && collabSession) {
@@ -448,11 +472,27 @@ const CodeEditor = ({
       }
 
       // Wait a moment for UX before turning off spinning state (optional but feels good)
-      setTimeout(() => setIsSaving(false), 300); 
+      if (!isAutoSave) setTimeout(() => setIsSaving(false), 300); 
     } catch (error) {
-      setIsSaving(false);
+      if (!isAutoSave) setIsSaving(false);
     }
-  };
+  }, [readOnly, isSaving, file, content, onSave, socket, collabSession]);
+
+  // ─── AUTO-SAVE FUNCTIONALITY ───────────────────────
+  useEffect(() => {
+    // If the file is read-only or there are no unsaved changes, don't do anything
+    if (readOnly || !file || content === file.content) return;
+    
+    // If the change came from a remote user, don't trigger auto-save locally
+    if (isRemoteChange.current) return;
+
+    const timeoutId = setTimeout(() => {
+      // Pass true to indicate this is a silent auto-save
+      handleSave(true);
+    }, 1500); // Wait 1.5 seconds after typing stops
+
+    return () => clearTimeout(timeoutId);
+  }, [content, file, readOnly, handleSave]);
 
   if (!file) return null;
 
