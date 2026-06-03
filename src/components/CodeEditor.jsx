@@ -74,6 +74,7 @@ const CodeEditor = ({
   // Inline comment state
   const [fileComments, setFileComments] = useState([]);
   const [commentWidget, setCommentWidget] = useState(null); // { line, position }
+  const handleSaveRef = useRef();
 
   // Determine language dynamically
   const language = file?.language && file.language !== 'plaintext' ? file.language : getLanguageFromPath(file?.path);
@@ -157,7 +158,7 @@ const CodeEditor = ({
     
     // Add Ctrl+S / Cmd+S shortcut
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-      handleSave();
+      if (handleSaveRef.current) handleSaveRef.current();
     });
 
     // ─── Margin click: open comment widget ──────────────
@@ -477,6 +478,10 @@ const CodeEditor = ({
       if (!isAutoSave) setIsSaving(false);
     }
   }, [readOnly, isSaving, file, content, onSave, socket, collabSession]);
+
+  useEffect(() => {
+    handleSaveRef.current = handleSave;
+  }, [handleSave]);
 
   // ─── AUTO-SAVE FUNCTIONALITY ───────────────────────
   useEffect(() => {

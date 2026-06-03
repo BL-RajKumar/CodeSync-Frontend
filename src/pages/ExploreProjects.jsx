@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Filter, Star, GitFork, Code2, User as UserIcon, Loader2 } from 'lucide-react';
+import { Search, Filter, Star, GitFork, Code2, User as UserIcon, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
@@ -12,16 +12,29 @@ const ExploreProjects = () => {
   const [searchOwner, setSearchOwner] = useState('');
   const [filterLanguage, setFilterLanguage] = useState('');
   const [forkingId, setForkingId] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalProjects, setTotalProjects] = useState(0);
 
   const { user, checkAuth } = useAuth();
   const navigate = useNavigate();
 
-  // Example languages - update if backend has a specific list
-  const languages = ['JavaScript', 'Python', 'Java', 'C++', 'Ruby', 'Go', 'TypeScript', 'Rust'];
+  // Exact language values as stored in the DB, synced with CreateProjectModal
+  const languages = [
+    { value: 'javascript', label: 'JavaScript' },
+    { value: 'python', label: 'Python' },
+    { value: 'java', label: 'Java' },
+    { value: 'cpp', label: 'C++' },
+    { value: 'go', label: 'Go' },
+    { value: 'ruby', label: 'Ruby' },
+    { value: 'react', label: 'React' },
+    { value: 'node-web', label: 'Node.js' },
+    { value: 'vanilla-web', label: 'Vanilla HTML/CSS/JS' },
+  ];
 
   useEffect(() => {
     fetchProjects();
-  }, [searchName, searchOwner, filterLanguage]);
+  }, [searchName, searchOwner, filterLanguage, currentPage]);
 
   const fetchProjects = async () => {
     setLoading(true);
@@ -31,13 +44,18 @@ const ExploreProjects = () => {
       if (searchOwner) queryParams.append('owner', searchOwner);
       if (filterLanguage) queryParams.append('language', filterLanguage);
 
+      queryParams.append('page', currentPage);
+      queryParams.append('limit', 9);
+
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
       const response = await fetch(`${apiUrl}/projects/public?${queryParams.toString()}`);
       if (!response.ok) {
         throw new Error('Failed to fetch projects');
       }
       const data = await response.json();
-      setProjects(data);
+      setProjects(data.projects);
+      setTotalPages(data.totalPages);
+      setTotalProjects(data.totalProjects);
     } catch (error) {
       toast.error(error.message);
     } finally {
@@ -47,14 +65,17 @@ const ExploreProjects = () => {
 
   const handleSearchChange = (e) => {
     setSearchName(e.target.value);
+    setCurrentPage(1);
   };
 
   const handleOwnerChange = (e) => {
     setSearchOwner(e.target.value);
+    setCurrentPage(1);
   };
 
   const handleLanguageChange = (e) => {
     setFilterLanguage(e.target.value);
+    setCurrentPage(1);
   };
 
   const handleFork = async (projectId) => {
@@ -145,7 +166,7 @@ const ExploreProjects = () => {
           >
             <option value="" className="bg-dark text-main">All Languages</option>
             {languages.map((lang) => (
-              <option key={lang} value={lang} className="bg-dark text-main">{lang}</option>
+              <option key={lang.value} value={lang.value} className="bg-dark text-main">{lang.label}</option>
             ))}
           </select>
         </div>
@@ -222,6 +243,32 @@ const ExploreProjects = () => {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {!loading && projects.length > 0 && totalPages > 1 && (
+        <div className="flex justify-center items-center mt-12 gap-4">
+          <button
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-main hover:bg-white/10 hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <ChevronLeft size={18} />
+            Previous
+          </button>
+          
+          <div className="text-muted text-sm font-medium">
+            Page <span className="text-main">{currentPage}</span> of <span className="text-main">{totalPages}</span>
+          </div>
+          
+          <button
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-main hover:bg-white/10 hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Next
+            <ChevronRight size={18} />
+          </button>
         </div>
       )}
     </div>

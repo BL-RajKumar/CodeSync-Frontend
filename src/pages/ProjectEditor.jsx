@@ -9,6 +9,8 @@ import SandboxPanel from '../components/SandboxPanel';
 import SnapshotPanel from '../components/SnapshotPanel';
 import SnapshotDiffModal from '../components/SnapshotDiffModal';
 import CodeEditor from '../components/CodeEditor';
+import WebPreviewPanel from '../components/WebPreviewPanel';
+import PackageManager from '../components/PackageManager';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import ProjectCommentsPanel from '../components/ProjectCommentsPanel';
@@ -39,6 +41,46 @@ const ProjectEditor = () => {
   const codeRef = useRef({});
   // Ref to prevent auto-rejoining a session we were just kicked from
   const kickedSessionIdRef = useRef(null);
+
+  // Resize State
+  const [previewWidth, setPreviewWidth] = useState(50);
+  const [isDragging, setIsDragging] = useState(false);
+  const isDraggingRef = useRef(false);
+
+  const handleDrag = useCallback((e) => {
+    if (!isDraggingRef.current) return;
+    const windowWidth = window.innerWidth;
+    const sidebarWidth = 324; // Approximate width of sidebars (44px + 280px)
+    const availableWidth = windowWidth - sidebarWidth;
+    
+    // e.clientX is absolute. The preview is on the right.
+    // So the preview width in pixels is windowWidth - e.clientX
+    let newWidth = ((windowWidth - e.clientX) / availableWidth) * 100;
+    
+    if (newWidth < 15) newWidth = 15;
+    if (newWidth > 85) newWidth = 85;
+    
+    setPreviewWidth(newWidth);
+  }, []);
+
+  const handleDragEnd = useCallback(() => {
+    isDraggingRef.current = false;
+    setIsDragging(false);
+    document.removeEventListener('mousemove', handleDrag);
+    document.removeEventListener('mouseup', handleDragEnd);
+    // Add pointer events back to iframes if needed
+    document.body.style.userSelect = 'auto';
+  }, [handleDrag]);
+
+  const handleDragStart = (e) => {
+    e.preventDefault();
+    isDraggingRef.current = true;
+    setIsDragging(true);
+    document.addEventListener('mousemove', handleDrag);
+    document.addEventListener('mouseup', handleDragEnd);
+    // Prevent text selection while dragging
+    document.body.style.userSelect = 'none';
+  };
 
   useEffect(() => {
     const fetchProjectAndFiles = async () => {
@@ -150,7 +192,7 @@ const ProjectEditor = () => {
       
       if (revertedContent !== undefined) {
         setSelectedFile(prev => prev ? { ...prev, content: revertedContent } : null);
-        setFiles(prev => prev.map(f => f.fileId === selectedFile?.fileId ? { ...f, content: revertedContent } : f));
+        setFiles(prev => prev.map(f => (f.fileId || f._id) === (selectedFile?.fileId || selectedFile?._id) ? { ...f, content: revertedContent } : f));
       }
       
       toast(message || 'Session ended', { icon: '🔴' });
@@ -266,7 +308,7 @@ const ProjectEditor = () => {
       // Update UI with reverted content directly from HTTP response for perfect reflection
       if (discard && response.data.revertedContent !== undefined) {
         setSelectedFile(prev => prev ? { ...prev, content: response.data.revertedContent } : null);
-        setFiles(prev => prev.map(f => f.fileId === (selectedFile?.fileId || selectedFile?._id) ? { ...f, content: response.data.revertedContent } : f));
+        setFiles(prev => prev.map(f => (f.fileId || f._id) === (selectedFile?.fileId || selectedFile?._id) ? { ...f, content: response.data.revertedContent } : f));
         
         // Also update the live codeRef so Sandbox reflects the discard instantly
         if (codeRef.current && (selectedFile?.fileId || selectedFile?._id)) {
@@ -307,14 +349,14 @@ const ProjectEditor = () => {
   const handleRenameFile = async (node, newName, newPath) => {
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      const response = await axios.put(`${apiUrl}/files/${node.fileId}/rename`, {
+      const response = await axios.put(`${apiUrl}/files/${node.fileId || node.originalFile?._id}/rename`, {
         name: newName,
         path: newPath
       }, { withCredentials: true });
       
-      setFiles(prev => prev.map(f => f.fileId === node.fileId ? response.data : f));
+      setFiles(prev => prev.map(f => (f.fileId || f._id) === (node.fileId || node.originalFile?._id) ? response.data : f));
       
-      if (selectedFile?.fileId === node.fileId) {
+      if ((selectedFile?.fileId || selectedFile?._id) === (node.fileId || node.originalFile?._id)) {
         setSelectedFile(response.data);
       }
       
@@ -329,10 +371,10 @@ const ProjectEditor = () => {
     
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      await axios.delete(`${apiUrl}/files/${node.fileId}`, { withCredentials: true });
+      await axios.delete(`${apiUrl}/files/${node.fileId || node.originalFile?._id}`, { withCredentials: true });
       
-      setFiles(prev => prev.filter(f => f.fileId !== node.fileId));
-      if (selectedFile?.fileId === node.fileId) {
+      setFiles(prev => prev.filter(f => (f.fileId || f._id) !== (node.fileId || node.originalFile?._id)));
+      if ((selectedFile?.fileId || selectedFile?._id) === (node.fileId || node.originalFile?._id)) {
         setSelectedFile(null);
       }
       toast.success('File deleted');
@@ -350,14 +392,14 @@ const ProjectEditor = () => {
       
       // Update local files state with new size/lastEditedBy
       setFiles(prev => prev.map(f => {
-        if (f.fileId === fileId) {
+        if ((f.fileId || f._id) === fileId) {
           return { ...f, content: newContent, size: response.data.size };
         }
         return f;
       }));
       
       // Update selected file object to drop the dirty state
-      if (selectedFile?.fileId === fileId) {
+      if ((selectedFile?.fileId || selectedFile?._id) === fileId) {
         setSelectedFile(prev => ({ ...prev, content: newContent }));
       }
       
@@ -383,8 +425,8 @@ const ProjectEditor = () => {
       }, { withCredentials: true });
       
       setFiles(prev => {
-        const updatedIds = response.data.files.map(f => f.fileId);
-        const otherFiles = prev.filter(f => !updatedIds.includes(f.fileId));
+        const updatedIds = response.data.files.map(f => f.fileId || f._id);
+        const otherFiles = prev.filter(f => !updatedIds.includes(f.fileId || f._id));
         return [...otherFiles, ...response.data.files];
       });
       
@@ -405,9 +447,9 @@ const ProjectEditor = () => {
       });
       
       const deletedIds = response.data.deletedFileIds || [];
-      setFiles(prev => prev.filter(f => !deletedIds.includes(f.fileId)));
+      setFiles(prev => prev.filter(f => !deletedIds.includes(f.fileId || f._id)));
       
-      if (selectedFile && deletedIds.includes(selectedFile.fileId)) {
+      if (selectedFile && deletedIds.includes(selectedFile.fileId || selectedFile._id)) {
         setSelectedFile(null);
       }
       
@@ -493,6 +535,8 @@ const ProjectEditor = () => {
   const currentUserId = user?.userId || user?._id;
   const isReadOnly = collabSession ? false : (projectOwnerId !== currentUserId);
 
+  const isWebProject = ['react', 'vanilla-web', 'node-web'].includes(project?.language);
+
   const handleSearchResultClick = (fileObj, lineNumber) => {
     setSelectedFile(fileObj);
     setScrollToLine(lineNumber);
@@ -527,18 +571,20 @@ const ProjectEditor = () => {
           >
             <Search size={18} />
           </button>
-          <button
-            id="sidebar-tab-run"
-            onClick={() => setSidebarTab('run')}
-            className={`p-2.5 rounded-lg transition-all duration-150 ${
-              sidebarTab === 'run' 
-                ? 'text-emerald-400 bg-emerald-500/10 shadow-[inset_2px_0_0_0_#10b981]' 
-                : 'text-muted hover:text-main hover:bg-white/5'
-            }`}
-            title="Run Code (Sandbox)"
-          >
-            <Play size={18} />
-          </button>
+          {!isWebProject && (
+            <button
+              id="sidebar-tab-run"
+              onClick={() => setSidebarTab('run')}
+              className={`p-2.5 rounded-lg transition-all duration-150 ${
+                sidebarTab === 'run' 
+                  ? 'text-emerald-400 bg-emerald-500/10 shadow-[inset_2px_0_0_0_#10b981]' 
+                  : 'text-muted hover:text-main hover:bg-white/5'
+              }`}
+              title="Run Code (Sandbox)"
+            >
+              <Play size={18} />
+            </button>
+          )}
           <button
             id="sidebar-tab-snapshots"
             onClick={() => setSidebarTab('snapshots')}
@@ -574,16 +620,27 @@ const ProjectEditor = () => {
         </div>
         <div className="flex-1 overflow-hidden">
           {sidebarTab === 'files' && (
-            <FileTree 
-              files={files}
-              onCreateFile={isReadOnly ? () => toast.error('Read only') : handleCreateFile}
-              onRenameFile={isReadOnly ? () => toast.error('Read only') : handleRenameFile}
-              onDeleteFile={isReadOnly ? () => toast.error('Read only') : handleDeleteFile}
-              onRenameFolder={isReadOnly ? () => toast.error('Read only') : handleRenameFolder}
-              onDeleteFolder={isReadOnly ? () => toast.error('Read only') : handleDeleteFolder}
-              onMoveNode={isReadOnly ? () => toast.error('Read only') : handleMoveNode}
-              onFileSelect={(file) => { setSelectedFile(file); setScrollToLine(null); }}
-            />
+            <div className="h-full flex flex-col">
+              <div className="flex-1 overflow-hidden relative">
+                <FileTree 
+                  files={files}
+                  onCreateFile={isReadOnly ? () => toast.error('Read only') : handleCreateFile}
+                  onRenameFile={isReadOnly ? () => toast.error('Read only') : handleRenameFile}
+                  onDeleteFile={isReadOnly ? () => toast.error('Read only') : handleDeleteFile}
+                  onRenameFolder={isReadOnly ? () => toast.error('Read only') : handleRenameFolder}
+                  onDeleteFolder={isReadOnly ? () => toast.error('Read only') : handleDeleteFolder}
+                  onMoveNode={isReadOnly ? () => toast.error('Read only') : handleMoveNode}
+                  onFileSelect={(file) => { setSelectedFile(file); setScrollToLine(null); }}
+                />
+              </div>
+              {isWebProject && (
+                <PackageManager 
+                  files={files}
+                  onSaveFile={handleSaveFileContent}
+                  isReadOnly={isReadOnly}
+                />
+              )}
+            </div>
           )}
           {sidebarTab === 'search' && (
             <SearchPanel
@@ -619,34 +676,54 @@ const ProjectEditor = () => {
       </div>
       
       {/* Main Editor Area */}
-      <div className="flex-1 flex flex-col bg-[#181825]">
-        {selectedFile ? (
-          <div className="flex-1 p-4">
-            <CodeEditor 
-              file={selectedFile} 
-              onSave={handleSaveFileContent} 
-              readOnly={isReadOnly}
-              scrollToLine={scrollToLine}
-              socket={socket}
-              collabSession={collabSession}
-              collabParticipants={collabParticipants}
-              isCollabOwner={collabSession && user && (collabSession.ownerId === (user.userId || user._id))}
-              onStartCollab={handleStartCollab}
-              onEndCollab={handleEndCollab}
-              onKickParticipant={handleKickParticipant}
-              shareLink={shareLink}
-              isStartingCollab={isStartingCollab}
-              onOpenSandbox={() => setSidebarTab('run')}
-              projectId={projectId}
-              currentUser={user}
-              snapshotId={selectedFile?.snapshotId || null}
-              codeRef={codeRef}
+      <div className="flex-1 flex bg-[#181825] overflow-hidden">
+        <div style={{ width: isWebProject ? `${100 - previewWidth}%` : '100%' }} className="flex flex-col min-w-0 flex-shrink-0">
+          {selectedFile ? (
+            <div className="flex-1 p-4 h-full flex flex-col min-h-0">
+              <CodeEditor 
+                file={selectedFile} 
+                onSave={handleSaveFileContent} 
+                readOnly={isReadOnly}
+                scrollToLine={scrollToLine}
+                socket={socket}
+                collabSession={collabSession}
+                collabParticipants={collabParticipants}
+                isCollabOwner={collabSession && user && (collabSession.ownerId === (user.userId || user._id))}
+                onStartCollab={handleStartCollab}
+                onEndCollab={handleEndCollab}
+                onKickParticipant={handleKickParticipant}
+                shareLink={shareLink}
+                isStartingCollab={isStartingCollab}
+                onOpenSandbox={isWebProject ? undefined : () => setSidebarTab('run')}
+                projectId={projectId}
+                currentUser={user}
+                snapshotId={selectedFile?.snapshotId || null}
+                codeRef={codeRef}
+              />
+            </div>
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-muted flex-col opacity-60">
+              <h2 className="text-3xl font-bold mb-4">Welcome to {project?.name}</h2>
+              <p className="text-lg">Select a file from the sidebar to start coding.</p>
+            </div>
+          )}
+        </div>
+
+        {/* Resizer Handle */}
+        {isWebProject && (
+          <div 
+            className="w-1.5 bg-white/5 hover:bg-primary/50 active:bg-primary cursor-col-resize z-50 shrink-0 transition-colors"
+            onMouseDown={handleDragStart}
+          />
+        )}
+
+        {/* Web Preview Panel */}
+        {isWebProject && (
+          <div style={{ width: `calc(${previewWidth}% - 6px)`, pointerEvents: isDragging ? 'none' : 'auto' }} className="min-w-0 flex-shrink-0 flex flex-col h-full border-l border-white/10">
+            <WebPreviewPanel 
+              files={files} 
+              language={project?.language} 
             />
-          </div>
-        ) : (
-          <div className="flex-1 flex items-center justify-center text-muted flex-col opacity-60">
-            <h2 className="text-3xl font-bold mb-4">Welcome to {project?.name}</h2>
-            <p className="text-lg">Select a file from the sidebar to start coding.</p>
           </div>
         )}
       </div>
@@ -660,6 +737,11 @@ const ProjectEditor = () => {
         fileName={selectedFile?.name}
         snapshotHash={diffModalState.snapshot?.hash}
       />
+
+      {/* Invisible overlay to prevent iframes from swallowing mouse events during drag */}
+      {isDragging && (
+        <div className="fixed inset-0 z-[9999] cursor-col-resize" />
+      )}
     </div>
   );
 };

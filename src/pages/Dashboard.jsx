@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
-import { Code, Star, GitFork } from 'lucide-react';
+import { Code, Star, GitFork, Trash2 } from 'lucide-react';
 import CreateProjectModal from '../components/CreateProjectModal';
 
 const Dashboard = () => {
@@ -88,6 +88,22 @@ const Dashboard = () => {
     }
   };
 
+  const handleDeleteProject = async (projectId) => {
+    if (!window.confirm('Are you sure you want to delete this project? This action cannot be undone and will delete all associated files.')) {
+      return;
+    }
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      await axios.delete(`${apiUrl}/projects/${projectId}`, {
+        withCredentials: true
+      });
+      setProjects(prev => prev.filter(p => p.projectId !== projectId && p._id !== projectId));
+      toast.success('Project deleted successfully');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to delete project');
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 mt-8 animate-fade-in mb-16">
       <div className="glass-panel p-12 mb-12">
@@ -152,10 +168,19 @@ const Dashboard = () => {
                       {project.description || 'No description provided.'}
                     </p>
                     <div className="flex justify-between items-center mt-auto">
-                      <span className="text-xs px-2 py-1 rounded-md border border-white/10">
-                        {project.visibility}
-                      </span>
-                      <Link to={`/p/${project.projectId}`} className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all duration-150 bg-white/5 text-main border border-white/10 hover:bg-white/10">
+                      <div className="flex gap-2">
+                        <span className="text-xs px-2 py-1 rounded-md border border-white/10">
+                          {project.visibility}
+                        </span>
+                        <button 
+                          onClick={() => handleDeleteProject(project.projectId || project._id)}
+                          className="text-muted hover:text-red-400 p-1 rounded-md transition-colors"
+                          title="Delete Project"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                      <Link to={`/p/${project.projectId || project._id}`} className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all duration-150 bg-white/5 text-main border border-white/10 hover:bg-white/10">
                         Open Editor
                       </Link>
                     </div>
