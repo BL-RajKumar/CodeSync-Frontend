@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { ChevronRight, ChevronDown, FileCode, Folder, FolderOpen, Plus, Edit2, Trash2, X, Check } from 'lucide-react';
+import { ChevronRight, ChevronDown, FileCode, Folder, FolderOpen, Plus, Edit2, Trash2, X, Check, FilePlus, FolderPlus } from 'lucide-react';
 
-const FileTreeNode = ({ node, level, onSelect, onRenameFile, onDeleteFile, onRenameFolder, onDeleteFolder, onMoveNode, onCreateInside }) => {
+const FileTreeNode = ({ node, level, onSelect, onRenameFile, onDeleteFile, onRenameFolder, onDeleteFolder, onMoveNode, onCreateFileInside, onCreateFolderInside }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
@@ -131,9 +131,14 @@ const FileTreeNode = ({ node, level, onSelect, onRenameFile, onDeleteFile, onRen
               <Trash2 size={12} />
             </button>
             {node.type === 'folder' && (
-              <button onClick={() => onCreateInside(node.path)} className="p-1 hover:text-primary transition-colors text-muted" title="New File Here">
-                <Plus size={12} />
-              </button>
+              <>
+                <button onClick={() => onCreateFileInside(node.path)} className="p-1 hover:text-primary transition-colors text-muted" title="New File Here">
+                  <FilePlus size={12} />
+                </button>
+                <button onClick={() => onCreateFolderInside(node.path)} className="p-1 hover:text-primary transition-colors text-muted" title="New Folder Here">
+                  <FolderPlus size={12} />
+                </button>
+              </>
             )}
           </div>
         )}
@@ -152,7 +157,8 @@ const FileTreeNode = ({ node, level, onSelect, onRenameFile, onDeleteFile, onRen
               onRenameFolder={onRenameFolder}
               onDeleteFolder={onDeleteFolder}
               onMoveNode={onMoveNode}
-              onCreateInside={onCreateInside}
+              onCreateFileInside={onCreateFileInside}
+              onCreateFolderInside={onCreateFolderInside}
             />
           ))}
         </div>
@@ -163,6 +169,7 @@ const FileTreeNode = ({ node, level, onSelect, onRenameFile, onDeleteFile, onRen
 
 const FileTree = ({ files, onCreateFile, onRenameFile, onDeleteFile, onRenameFolder, onDeleteFolder, onMoveNode, onFileSelect }) => {
   const [isCreating, setIsCreating] = useState(false);
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [newFileName, setNewFileName] = useState('');
   const [createPath, setCreatePath] = useState(''); // root by default
 
@@ -177,6 +184,9 @@ const FileTree = ({ files, onCreateFile, onRenameFile, onDeleteFile, onRenameFol
       parts.forEach((part, index) => {
         currentPath += `/${part}`;
         const isFile = index === parts.length - 1;
+        
+        // Hide .keep files entirely, their parent folders are already created
+        if (isFile && part === '.keep') return;
         
         let existingNode = currentLevel.find(n => n.name === part);
         
@@ -218,17 +228,31 @@ const FileTree = ({ files, onCreateFile, onRenameFile, onDeleteFile, onRenameFol
   const handleCreateSubmit = (e) => {
     e.preventDefault();
     if (newFileName.trim()) {
-      const path = createPath ? `${createPath}/${newFileName.trim()}` : `/${newFileName.trim()}`;
-      onCreateFile(newFileName.trim(), path);
+      if (isCreatingFolder) {
+        const path = createPath ? `${createPath}/${newFileName.trim()}/.keep` : `/${newFileName.trim()}/.keep`;
+        onCreateFile('.keep', path);
+      } else {
+        const path = createPath ? `${createPath}/${newFileName.trim()}` : `/${newFileName.trim()}`;
+        onCreateFile(newFileName.trim(), path);
+      }
       setIsCreating(false);
+      setIsCreatingFolder(false);
       setNewFileName('');
       setCreatePath('');
     }
   };
 
-  const startCreate = (path = '') => {
+  const startCreateFile = (path = '') => {
     setCreatePath(path);
     setIsCreating(true);
+    setIsCreatingFolder(false);
+    setNewFileName('');
+  };
+
+  const startCreateFolder = (path = '') => {
+    setCreatePath(path);
+    setIsCreatingFolder(true);
+    setIsCreating(false);
     setNewFileName('');
   };
 
@@ -258,23 +282,30 @@ const FileTree = ({ files, onCreateFile, onRenameFile, onDeleteFile, onRenameFol
       <div className={`flex items-center justify-between p-3 border-b border-white/5 uppercase text-xs font-bold tracking-wider text-muted ${isRootDragOver ? 'bg-primary/10' : ''}`}>
         <span>Explorer</span>
         <div className="flex gap-1">
-          <button onClick={() => startCreate('')} className="p-1 hover:text-primary transition-colors" title="New File at Root">
-            <Plus size={14} />
+          <button onClick={() => startCreateFile('')} className="p-1 hover:text-primary transition-colors" title="New File at Root">
+            <FilePlus size={14} />
+          </button>
+          <button onClick={() => startCreateFolder('')} className="p-1 hover:text-primary transition-colors" title="New Folder at Root">
+            <FolderPlus size={14} />
           </button>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto py-2">
-        {isCreating && !createPath && (
+        {(isCreating || isCreatingFolder) && !createPath && (
           <div className="px-3 py-1 flex items-center">
-            <FileCode size={14} className="text-[#818cf8] mr-2 shrink-0" />
+            {isCreatingFolder ? (
+              <Folder size={14} className="text-primary mr-2 shrink-0" />
+            ) : (
+              <FileCode size={14} className="text-[#818cf8] mr-2 shrink-0" />
+            )}
             <form onSubmit={handleCreateSubmit} className="flex-1">
               <input 
                 autoFocus
                 value={newFileName}
                 onChange={e => setNewFileName(e.target.value)}
-                onBlur={() => setIsCreating(false)}
-                placeholder="filename.ext"
+                onBlur={() => { setIsCreating(false); setIsCreatingFolder(false); }}
+                placeholder={isCreatingFolder ? "folderName" : "filename.ext"}
                 className="bg-dark border border-primary/50 text-main px-1 text-xs outline-none w-full"
               />
             </form>
@@ -292,19 +323,21 @@ const FileTree = ({ files, onCreateFile, onRenameFile, onDeleteFile, onRenameFol
             onRenameFolder={onRenameFolder}
             onDeleteFolder={onDeleteFolder}
             onMoveNode={onMoveNode}
-            onCreateInside={startCreate}
+            onCreateFileInside={startCreateFile}
+            onCreateFolderInside={startCreateFolder}
           />
         ))}
 
-        {isCreating && createPath && (
+        {(isCreating || isCreatingFolder) && createPath && (
           <div className="px-3 py-1 flex items-center mt-1 text-muted text-xs italic">
-            Creating in {createPath}...
+            Creating {isCreatingFolder ? 'folder' : 'file'} in {createPath}...
             <form onSubmit={handleCreateSubmit} className="flex-1 ml-2">
               <input 
                 autoFocus
                 value={newFileName}
                 onChange={e => setNewFileName(e.target.value)}
-                onBlur={() => setIsCreating(false)}
+                onBlur={() => { setIsCreating(false); setIsCreatingFolder(false); }}
+                placeholder={isCreatingFolder ? "folderName" : "filename.ext"}
                 className="bg-dark border border-primary/50 text-main px-1 text-xs outline-none w-full"
               />
             </form>

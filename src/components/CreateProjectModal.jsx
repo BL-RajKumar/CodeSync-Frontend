@@ -4,14 +4,22 @@ import Input from './Input';
 import Button from './Button';
 
 const LANGUAGES = [
-  'JavaScript', 'Python', 'Java', 'C++', 'Go', 'Ruby', 'HTML/CSS'
+  { value: 'javascript', label: 'JavaScript' },
+  { value: 'python', label: 'Python' },
+  { value: 'java', label: 'Java' },
+  { value: 'cpp', label: 'C++' },
+  { value: 'go', label: 'Go' },
+  { value: 'ruby', label: 'Ruby' },
+  { value: 'react', label: 'React (Web Project)' },
+  { value: 'node-web', label: 'Node.js (Web Project)' },
+  { value: 'vanilla-web', label: 'Vanilla HTML/CSS/JS (Web Project)' }
 ];
 
 const CreateProjectModal = ({ isOpen, onClose, onSubmit, loading }) => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    language: 'JavaScript',
+    language: 'javascript',
     visibility: 'Public'
   });
 
@@ -68,7 +76,7 @@ const CreateProjectModal = ({ isOpen, onClose, onSubmit, loading }) => {
                 onChange={handleChange}
               >
                 {LANGUAGES.map(lang => (
-                  <option key={lang} value={lang} className="bg-dark text-main">{lang}</option>
+                  <option key={lang.value} value={lang.value} className="bg-dark text-main">{lang.label}</option>
                 ))}
               </select>
             </div>
