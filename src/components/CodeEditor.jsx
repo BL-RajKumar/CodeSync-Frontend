@@ -60,6 +60,9 @@ const CodeEditor = ({
   currentUser,
   snapshotId,
   codeRef,
+  // Key that bumps when content must be force-reset (e.g. snapshot restore)
+  // Deliberately NOT bumped on auto-save to prevent cursor jumping
+  forceContentKey = 0,
 }) => {
   const [content, setContent] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -74,11 +77,13 @@ const CodeEditor = ({
   // Inline comment state
   const [fileComments, setFileComments] = useState([]);
   const [commentWidget, setCommentWidget] = useState(null); // { line, position }
+  const handleSaveRef = useRef();
 
   // Determine language dynamically
   const language = file?.language && file.language !== 'plaintext' ? file.language : getLanguageFromPath(file?.path);
 
-  // Update local content when file changes
+  // Update local content when file identity changes or a forced reset is triggered.
+  // Intentionally does NOT watch file?.content to avoid cursor jumping after auto-save.
   useEffect(() => {
     const initialContent = file?.content || '';
     setContent(initialContent);
@@ -88,7 +93,7 @@ const CodeEditor = ({
     if (codeRef && (file?.fileId || file?._id)) {
       codeRef.current[file.fileId || file._id] = initialContent;
     }
-  }, [file?.fileId, file?.content, codeRef]);
+  }, [file?.fileId, file?._id, forceContentKey, codeRef]);
 
   // Fetch inline comments for this file
   const fetchFileComments = useCallback(async () => {
@@ -157,7 +162,7 @@ const CodeEditor = ({
     
     // Add Ctrl+S / Cmd+S shortcut
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-      handleSave();
+      if (handleSaveRef.current) handleSaveRef.current();
     });
 
     // ─── Margin click: open comment widget ──────────────
@@ -477,6 +482,10 @@ const CodeEditor = ({
       if (!isAutoSave) setIsSaving(false);
     }
   }, [readOnly, isSaving, file, content, onSave, socket, collabSession]);
+
+  useEffect(() => {
+    handleSaveRef.current = handleSave;
+  }, [handleSave]);
 
   // ─── AUTO-SAVE FUNCTIONALITY ───────────────────────
   useEffect(() => {
