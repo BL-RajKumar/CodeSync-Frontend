@@ -76,7 +76,7 @@ const CreateProjectModal = ({ isOpen, onClose, onSubmit, loading }) => {
                 onChange={handleChange}
               >
                 {LANGUAGES.map(lang => (
-                  <option key={lang.value} value={lang.value} className="bg-dark text-main">{lang.label}</option>
+                  <option key={lang.value} value={lang.value}>{lang.label}</option>
                 ))}
               </select>
             </div>
@@ -89,8 +89,8 @@ const CreateProjectModal = ({ isOpen, onClose, onSubmit, loading }) => {
                 value={formData.visibility} 
                 onChange={handleChange}
               >
-                <option value="Public" className="bg-dark text-main">Public (Anyone can see)</option>
-                <option value="Private" className="bg-dark text-main">Private (Only you)</option>
+                <option value="Public">Public (Anyone can see)</option>
+                <option value="Private">Private (Only you)</option>
               </select>
             </div>
           </div>

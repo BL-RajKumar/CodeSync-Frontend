@@ -144,7 +144,7 @@ const ExploreProjects = () => {
             placeholder="Search by project name..."
             value={searchName}
             onChange={handleSearchChange}
-            className="bg-transparent border-none text-main text-base w-full focus:outline-none"
+            className="bg-transparent border-none text-main text-base w-full focus:outline-none placeholder-muted"
           />
         </div>
         <div className="flex items-center bg-white/5 border border-white/10 rounded-lg py-3 px-4 w-full transition-all duration-300 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
@@ -154,7 +154,7 @@ const ExploreProjects = () => {
             placeholder="Search by owner..."
             value={searchOwner}
             onChange={handleOwnerChange}
-            className="bg-transparent border-none text-main text-base w-full focus:outline-none"
+            className="bg-transparent border-none text-main text-base w-full focus:outline-none placeholder-muted"
           />
         </div>
         <div className="flex items-center bg-white/5 border border-white/10 rounded-lg py-3 px-4 w-full md:w-1/3 transition-all duration-300 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
@@ -164,9 +164,9 @@ const ExploreProjects = () => {
             onChange={handleLanguageChange}
             className="bg-transparent border-none text-main text-base w-full focus:outline-none cursor-pointer appearance-none"
           >
-            <option value="" className="bg-dark text-main">All Languages</option>
+            <option value="">All Languages</option>
             {languages.map((lang) => (
-              <option key={lang.value} value={lang.value} className="bg-dark text-main">{lang.label}</option>
+              <option key={lang.value} value={lang.value}>{lang.label}</option>
             ))}
           </select>
         </div>
@@ -180,7 +180,7 @@ const ExploreProjects = () => {
       ) : projects.length === 0 ? (
         <div className="glass-panel flex flex-col items-center justify-center p-16 text-center rounded-2xl">
           <Code2 size={48} className="text-muted mb-4 opacity-50" />
-          <h2 className="text-2xl font-bold mb-2">No projects found</h2>
+          <h2 className="text-2xl font-bold mb-2 text-main">No projects found</h2>
           <p className="text-muted">Try adjusting your search or filters.</p>
         </div>
       ) : (
@@ -217,8 +217,8 @@ const ExploreProjects = () => {
                     onClick={() => handleStar(project.projectId)}
                     className={`flex items-center gap-1.5 text-sm transition-colors ${
                       user?.starredProjects?.includes(project.projectId) 
-                        ? 'text-yellow-400 hover:text-yellow-500' 
-                        : 'text-muted hover:text-yellow-400'
+                        ? 'text-yellow-500 hover:text-yellow-600' 
+                        : 'text-muted hover:text-yellow-500'
                     }`}
                   >
                     <Star 
@@ -234,7 +234,7 @@ const ExploreProjects = () => {
                   <button 
                     onClick={() => handleFork(project.projectId)}
                     disabled={forkingId === project.projectId}
-                    className="ml-2 flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:text-primary transition-all duration-150 disabled:opacity-50"
+                    className="ml-2 flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white/5 border border-white/10 text-main hover:bg-white/10 hover:text-primary transition-all duration-150 disabled:opacity-50"
                   >
                     <GitFork size={14} />
                     {forkingId === project.projectId ? 'Forking...' : 'Fork'}

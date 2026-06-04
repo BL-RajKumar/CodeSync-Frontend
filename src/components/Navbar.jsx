@@ -191,6 +191,7 @@ const Navbar = () => {
 
         <div className="flex items-center gap-6">
           <Link to="/explore" className="text-muted font-medium hover:text-main transition-colors duration-150">Explore</Link>
+
           {user ? (
             <>
               <Link to="/dashboard" className="text-muted font-medium hover:text-main transition-colors duration-150">Dashboard</Link>

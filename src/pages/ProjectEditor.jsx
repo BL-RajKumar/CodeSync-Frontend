@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
-import { Loader2, FolderTree, Search, Play, History } from 'lucide-react';
+import { Loader2, FolderTree, Search, Play, History, Brush } from 'lucide-react';
 import FileTree from '../components/FileTree';
 import SearchPanel from '../components/SearchPanel';
 import SandboxPanel from '../components/SandboxPanel';
@@ -15,6 +15,8 @@ import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import ProjectCommentsPanel from '../components/ProjectCommentsPanel';
 import { MessageSquare } from 'lucide-react';
+
+const WhiteboardPanel = React.lazy(() => import('../components/WhiteboardPanel'));
 
 const ProjectEditor = () => {
   const { projectId } = useParams();
@@ -41,6 +43,10 @@ const ProjectEditor = () => {
   const codeRef = useRef({});
   // Ref to prevent auto-rejoining a session we were just kicked from
   const kickedSessionIdRef = useRef(null);
+
+  // Bump this key to force the CodeEditor to reload content (e.g. snapshot restore)
+  // Do NOT bump it on auto-save — that would cause cursor jumps.
+  const [contentResetKey, setContentResetKey] = useState(0);
 
   // Resize State
   const [previewWidth, setPreviewWidth] = useState(50);
@@ -489,6 +495,7 @@ const ProjectEditor = () => {
       // Update selected file explicitly if it is the one being restored
       if (selectedFile && (selectedFile.fileId === updatedFile.fileId || selectedFile._id === updatedFile._id)) {
         setSelectedFile(prev => ({ ...prev, content: updatedFile.content }));
+        setContentResetKey(k => k + 1); // force CodeEditor to reload without cursor jump
       }
       
       toast.success('File restored successfully');
@@ -509,6 +516,7 @@ const ProjectEditor = () => {
     
     if (selectedFile && (selectedFile.fileId === latestSnapshot.fileId || selectedFile._id === latestSnapshot.fileId)) {
       setSelectedFile(prev => ({ ...prev, content: latestSnapshot.content }));
+      setContentResetKey(k => k + 1); // force CodeEditor to reload without cursor jump
     }
     
     // 2. Persist the change to the backend File document quietly
@@ -552,7 +560,7 @@ const ProjectEditor = () => {
             onClick={() => setSidebarTab('files')}
             className={`p-2.5 rounded-lg transition-all duration-150 ${
               sidebarTab === 'files' 
-                ? 'text-primary bg-white/5 shadow-[inset_2px_0_0_0_var(--color-primary)]' 
+                ? 'text-primary bg-white/5 shadow-[inset_2px_0_0_0_#6366f1]' 
                 : 'text-muted hover:text-main hover:bg-white/5'
             }`}
             title="Explorer"
@@ -564,7 +572,7 @@ const ProjectEditor = () => {
             onClick={() => setSidebarTab('search')}
             className={`p-2.5 rounded-lg transition-all duration-150 ${
               sidebarTab === 'search' 
-                ? 'text-primary bg-white/5 shadow-[inset_2px_0_0_0_var(--color-primary)]' 
+                ? 'text-primary bg-white/5 shadow-[inset_2px_0_0_0_#6366f1]' 
                 : 'text-muted hover:text-main hover:bg-white/5'
             }`}
             title="Search in Files"
@@ -577,7 +585,7 @@ const ProjectEditor = () => {
               onClick={() => setSidebarTab('run')}
               className={`p-2.5 rounded-lg transition-all duration-150 ${
                 sidebarTab === 'run' 
-                  ? 'text-emerald-400 bg-emerald-500/10 shadow-[inset_2px_0_0_0_#10b981]' 
+                  ? 'text-emerald-500 bg-emerald-500/10 shadow-[inset_2px_0_0_0_#10b981]' 
                   : 'text-muted hover:text-main hover:bg-white/5'
               }`}
               title="Run Code (Sandbox)"
@@ -590,7 +598,7 @@ const ProjectEditor = () => {
             onClick={() => setSidebarTab('snapshots')}
             className={`p-2.5 rounded-lg transition-all duration-150 ${
               sidebarTab === 'snapshots' 
-                ? 'text-primary bg-white/5 shadow-[inset_2px_0_0_0_var(--color-primary)]' 
+                ? 'text-primary bg-white/5 shadow-[inset_2px_0_0_0_#6366f1]' 
                 : 'text-muted hover:text-main hover:bg-white/5'
             }`}
             title="File History"
@@ -602,12 +610,24 @@ const ProjectEditor = () => {
             onClick={() => setSidebarTab('comments')}
             className={`p-2.5 rounded-lg transition-all duration-150 ${
               sidebarTab === 'comments' 
-                ? 'text-primary bg-white/5 shadow-[inset_2px_0_0_0_var(--color-primary)]' 
+                ? 'text-primary bg-white/5 shadow-[inset_2px_0_0_0_#6366f1]' 
                 : 'text-muted hover:text-main hover:bg-white/5'
             }`}
             title="Project Comments & Code Review"
           >
             <MessageSquare size={18} />
+          </button>
+          <button
+            id="sidebar-tab-whiteboard"
+            onClick={() => setSidebarTab('whiteboard')}
+            className={`p-2.5 rounded-lg transition-all duration-150 ${
+              sidebarTab === 'whiteboard' 
+                ? 'text-primary bg-white/5 shadow-[inset_2px_0_0_0_#6366f1]' 
+                : 'text-muted hover:text-main hover:bg-white/5'
+            }`}
+            title="Collaborative Whiteboard"
+          >
+            <Brush size={18} />
           </button>
         </div>
       )}
@@ -672,13 +692,43 @@ const ProjectEditor = () => {
               }}
             />
           )}
+          {sidebarTab === 'whiteboard' && (
+            <div className="p-4 flex flex-col gap-4 text-muted">
+              <h3 className="text-lg font-bold text-main">Whiteboard Mode</h3>
+              <p className="text-sm">Collaborate in real-time with shapes, text, drawing, and diagrams.</p>
+              <div className="border-t border-white/10 pt-4">
+                <h4 className="text-sm font-semibold text-main mb-2">Tips:</h4>
+                <ul className="text-xs list-disc pl-4 space-y-2">
+                  <li>Use Spacebar + Drag to pan around the canvas</li>
+                  <li>Use Mouse Scroll to zoom in and out</li>
+                  <li>Click elements to select, move, or resize them</li>
+                  <li>Sync is automatic when in a collaborative session</li>
+                </ul>
+              </div>
+            </div>
+          )}
         </div>
       </div>
       
       {/* Main Editor Area */}
       <div className="flex-1 flex bg-[#181825] overflow-hidden">
-        <div style={{ width: isWebProject ? `${100 - previewWidth}%` : '100%' }} className="flex flex-col min-w-0 flex-shrink-0">
-          {selectedFile ? (
+        <div style={{ width: (isWebProject && sidebarTab !== 'whiteboard') ? `${100 - previewWidth}%` : '100%' }} className="flex flex-col min-w-0 flex-shrink-0">
+          {sidebarTab === 'whiteboard' ? (
+            <div className="flex-1 p-4 h-full flex flex-col min-h-0">
+              <Suspense fallback={
+                <div className="h-full w-full flex flex-col items-center justify-center bg-[#1e1e2e] text-muted">
+                  <Loader2 className="animate-spin text-primary mb-2" size={36} />
+                  <span>Loading Canvas...</span>
+                </div>
+              }>
+                <WhiteboardPanel 
+                  projectId={projectId} 
+                  socket={socket} 
+                  collabSession={collabSession} 
+                />
+              </Suspense>
+            </div>
+          ) : selectedFile ? (
             <div className="flex-1 p-4 h-full flex flex-col min-h-0">
               <CodeEditor 
                 file={selectedFile} 
@@ -699,6 +749,7 @@ const ProjectEditor = () => {
                 currentUser={user}
                 snapshotId={selectedFile?.snapshotId || null}
                 codeRef={codeRef}
+                forceContentKey={contentResetKey}
               />
             </div>
           ) : (
@@ -710,7 +761,7 @@ const ProjectEditor = () => {
         </div>
 
         {/* Resizer Handle */}
-        {isWebProject && (
+        {isWebProject && sidebarTab !== 'whiteboard' && (
           <div 
             className="w-1.5 bg-white/5 hover:bg-primary/50 active:bg-primary cursor-col-resize z-50 shrink-0 transition-colors"
             onMouseDown={handleDragStart}
@@ -718,7 +769,7 @@ const ProjectEditor = () => {
         )}
 
         {/* Web Preview Panel */}
-        {isWebProject && (
+        {isWebProject && sidebarTab !== 'whiteboard' && (
           <div style={{ width: `calc(${previewWidth}% - 6px)`, pointerEvents: isDragging ? 'none' : 'auto' }} className="min-w-0 flex-shrink-0 flex flex-col h-full border-l border-white/10">
             <WebPreviewPanel 
               files={files} 

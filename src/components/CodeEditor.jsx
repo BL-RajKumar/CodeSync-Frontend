@@ -60,6 +60,9 @@ const CodeEditor = ({
   currentUser,
   snapshotId,
   codeRef,
+  // Key that bumps when content must be force-reset (e.g. snapshot restore)
+  // Deliberately NOT bumped on auto-save to prevent cursor jumping
+  forceContentKey = 0,
 }) => {
   const [content, setContent] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -79,7 +82,8 @@ const CodeEditor = ({
   // Determine language dynamically
   const language = file?.language && file.language !== 'plaintext' ? file.language : getLanguageFromPath(file?.path);
 
-  // Update local content when file changes
+  // Update local content when file identity changes or a forced reset is triggered.
+  // Intentionally does NOT watch file?.content to avoid cursor jumping after auto-save.
   useEffect(() => {
     const initialContent = file?.content || '';
     setContent(initialContent);
@@ -89,7 +93,7 @@ const CodeEditor = ({
     if (codeRef && (file?.fileId || file?._id)) {
       codeRef.current[file.fileId || file._id] = initialContent;
     }
-  }, [file?.fileId, file?.content, codeRef]);
+  }, [file?.fileId, file?._id, forceContentKey, codeRef]);
 
   // Fetch inline comments for this file
   const fetchFileComments = useCallback(async () => {
