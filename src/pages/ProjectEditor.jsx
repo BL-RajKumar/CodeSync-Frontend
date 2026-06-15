@@ -38,6 +38,12 @@ const ProjectEditor = () => {
   const [collabParticipants, setCollabParticipants] = useState([]);
   const [shareLink, setShareLink] = useState('');
   const [isStartingCollab, setIsStartingCollab] = useState(false);
+  // When joining via a session link, stay on the loader until session-joined fires
+  // so the editor never renders with isReadOnly=true for a valid guest.
+  const [waitingForSession, setWaitingForSession] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return !!params.get('session');
+  });
 
   // Ref to hold the absolute latest code for each file (bypassing autosave delays)
   const codeRef = useRef({});
@@ -88,13 +94,44 @@ const ProjectEditor = () => {
     document.body.style.userSelect = 'none';
   };
 
+  // Set up Axios request interceptor to attach guest validation headers
+  useEffect(() => {
+    const interceptor = axios.interceptors.request.use((config) => {
+      const sessionParam = searchParams.get('session');
+      if (sessionParam) {
+        config.headers['x-session-id'] = sessionParam;
+        const pw = sessionStorage.getItem(`collab_pw_${sessionParam}`);
+        if (pw) config.headers['x-session-password'] = pw;
+        const guestName = sessionStorage.getItem(`collab_guest_name_${sessionParam}`);
+        const guestUid = sessionStorage.getItem(`collab_guest_uid_${sessionParam}`);
+        if (guestName) config.headers['x-guest-username'] = guestName;
+        if (guestUid) config.headers['x-guest-userid'] = guestUid;
+      }
+      return config;
+    });
+
+    return () => {
+      axios.interceptors.request.eject(interceptor);
+    };
+  }, [searchParams]);
+
   useEffect(() => {
     const fetchProjectAndFiles = async () => {
       try {
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
         
-        // Pass session information if we joined via a collaboration link
+        // Check if guest user is trying to join without entering username
         const sessionParam = searchParams.get('session');
+        if (sessionParam && !user) {
+          const guestName = sessionStorage.getItem(`collab_guest_name_${sessionParam}`);
+          const guestUid = sessionStorage.getItem(`collab_guest_uid_${sessionParam}`);
+          if (!guestName || !guestUid) {
+            navigate(`/collab/${sessionParam}`, { replace: true });
+            return;
+          }
+        }
+
+        // Pass session information if we joined via a collaboration link
         const sessionPassword = sessionParam ? (sessionStorage.getItem(`collab_pw_${sessionParam}`) || '') : '';
         let querySuffix = '';
         if (sessionParam) {
@@ -142,17 +179,30 @@ const ProjectEditor = () => {
     socket.emit('join-session', { sessionId: sessionParam, password });
   }, [searchParams, socket, connected, collabSession]);
 
+  // ─── Safety timeout: if session-joined never fires (bad password, kick, etc.)
+  // release the loader gate after 6 seconds so the user isn't permanently stuck.
+  useEffect(() => {
+    if (!waitingForSession) return;
+    const timer = setTimeout(() => setWaitingForSession(false), 6000);
+    return () => clearTimeout(timer);
+  }, [waitingForSession]);
+
   // ─── SOCKET EVENT LISTENERS ─────────────────────────
   useEffect(() => {
     if (!socket) return;
 
     const handleSessionJoined = (data) => {
-      // Check if this is the active file (compare against searchParams file if data.fileId is missing)
+      // Robustly resolve the current file ID regardless of object shape
+      // (FileTree nodes expose fileId/_id directly; raw DB objects expose _id)
+      const currentFileId = selectedFile
+        ? (selectedFile.fileId || selectedFile._id || selectedFile.originalFile?._id || selectedFile.originalFile?.fileId)
+        : null;
       const expectedFileId = data.fileId || searchParams.get('file');
-      if (selectedFile && expectedFileId && selectedFile.fileId !== expectedFileId && selectedFile._id !== expectedFileId) return;
-      
+
+      // Only guard against wrong-file events when BOTH IDs are known and they differ
+      if (currentFileId && expectedFileId && currentFileId.toString() !== expectedFileId.toString()) return;
+
       setCollabSession(prev => {
-        // Prevent object reference change if data is same
         if (prev && prev.sessionId === data.sessionId) return prev;
         return {
           sessionId: data.sessionId,
@@ -162,10 +212,13 @@ const ProjectEditor = () => {
       });
       setCollabParticipants(data.participants || []);
 
-      // Set the file content from the live session
+      // Set the live file content from the session
       if (data.fileContent !== undefined && selectedFile) {
         setSelectedFile(prev => ({ ...prev, content: data.fileContent }));
       }
+
+      // Session is now confirmed — release the loader gate
+      setWaitingForSession(false);
 
       setShareLink(`${window.location.origin}/collab/${data.sessionId}`);
       toast.success('Joined collaboration session!');
@@ -185,52 +238,107 @@ const ProjectEditor = () => {
       toast(`${userData.username} left`, { icon: '👋' });
     };
 
-    const handleSessionEnded = ({ message, revertedContent }) => {
+    const handleSessionEnded = ({ message, revertedContent, revertedFiles }) => {
       setCollabSession(null);
       setCollabParticipants([]);
       setShareLink('');
-      
+
       const newParams = new URLSearchParams(searchParams);
       newParams.delete('session');
       newParams.delete('file');
       newParams.delete('sessionPassword');
       setSearchParams(newParams, { replace: true });
-      
-      if (revertedContent !== undefined) {
+
+      if (revertedFiles && revertedFiles.length > 0) {
+        const revertedMap = {};
+        revertedFiles.forEach(rf => {
+          revertedMap[rf.fileId] = rf.content;
+        });
+
+        setSelectedFile(prev => {
+          if (!prev) return null;
+          const fid = prev.fileId || prev._id;
+          if (revertedMap[fid] !== undefined) {
+            return { ...prev, content: revertedMap[fid] };
+          }
+          return prev;
+        });
+
+        setFiles(prev => prev.map(f => {
+          const fid = f.fileId || f._id;
+          if (revertedMap[fid] !== undefined) {
+            return { ...f, content: revertedMap[fid] };
+          }
+          return f;
+        }));
+
+        if (codeRef.current) {
+          revertedFiles.forEach(rf => {
+            codeRef.current[rf.fileId] = rf.content;
+          });
+        }
+
+        setContentResetKey(k => k + 1);
+      } else if (revertedContent !== undefined) {
         setSelectedFile(prev => prev ? { ...prev, content: revertedContent } : null);
         setFiles(prev => prev.map(f => (f.fileId || f._id) === (selectedFile?.fileId || selectedFile?._id) ? { ...f, content: revertedContent } : f));
+        if (codeRef.current && (selectedFile?.fileId || selectedFile?._id)) {
+          codeRef.current[selectedFile.fileId || selectedFile._id] = revertedContent;
+        }
+        setContentResetKey(k => k + 1);
       }
-      
+
       toast(message || 'Session ended', { icon: '🔴' });
     };
 
     const handleErrorMessage = ({ message }) => {
       toast.error(message);
+      // Release loader gate — join was rejected
+      setWaitingForSession(false);
     };
 
     const handleParticipantKicked = ({ kickedUserId, kickedUsername, message }) => {
       const myId = user?.userId || user?._id;
       if (kickedUserId === myId) {
-        // I was kicked — mark the session to prevent auto-rejoin race condition
-        kickedSessionIdRef.current = collabSession?.sessionId || searchParams.get('session');
-        
-        // leave the session
+        const sessionParam = collabSession?.sessionId || searchParams.get('session');
+        kickedSessionIdRef.current = sessionParam;
+
+        if (sessionParam) {
+          sessionStorage.removeItem(`collab_guest_name_${sessionParam}`);
+          sessionStorage.removeItem(`collab_guest_uid_${sessionParam}`);
+          sessionStorage.removeItem(`collab_pw_${sessionParam}`);
+        }
+
         socket.emit('leave-session');
         setCollabSession(null);
         setCollabParticipants([]);
         setShareLink('');
-        
-        // Remove session parameters from URL so we don't automatically rejoin
+        setWaitingForSession(false);
+
         const newParams = new URLSearchParams(searchParams);
         newParams.delete('session');
         newParams.delete('file');
         newParams.delete('sessionPassword');
         setSearchParams(newParams, { replace: true });
-        
+
         toast.error('You have been removed from the session by the host.');
       } else {
         toast(`${kickedUsername} was removed`, { icon: '🚫' });
       }
+    };
+
+    const handleForceDisconnect = ({ reason }) => {
+      const sessionParam = searchParams.get('session');
+      if (sessionParam) {
+        sessionStorage.removeItem(`collab_guest_name_${sessionParam}`);
+        sessionStorage.removeItem(`collab_guest_uid_${sessionParam}`);
+        sessionStorage.removeItem(`collab_pw_${sessionParam}`);
+      }
+      setCollabSession(null);
+      setCollabParticipants([]);
+      setShareLink('');
+      setWaitingForSession(false);
+      toast.error(reason || 'You have been disconnected from the session.');
     };
 
     socket.on('session-joined', handleSessionJoined);
@@ -239,6 +347,7 @@ const ProjectEditor = () => {
     socket.on('session-ended', handleSessionEnded);
     socket.on('error-message', handleErrorMessage);
     socket.on('participant-kicked', handleParticipantKicked);
+    socket.on('force-disconnect', handleForceDisconnect);
 
     return () => {
       socket.off('session-joined', handleSessionJoined);
@@ -247,6 +356,7 @@ const ProjectEditor = () => {
       socket.off('session-ended', handleSessionEnded);
       socket.off('error-message', handleErrorMessage);
       socket.off('participant-kicked', handleParticipantKicked);
+      socket.off('force-disconnect', handleForceDisconnect);
     };
   }, [socket, selectedFile]);
 
@@ -312,7 +422,37 @@ const ProjectEditor = () => {
       setSearchParams(newParams, { replace: true });
       
       // Update UI with reverted content directly from HTTP response for perfect reflection
-      if (discard && response.data.revertedContent !== undefined) {
+      if (discard && response.data.revertedFiles && response.data.revertedFiles.length > 0) {
+        const revertedMap = {};
+        response.data.revertedFiles.forEach(rf => {
+          revertedMap[rf.fileId] = rf.content;
+        });
+
+        setSelectedFile(prev => {
+          if (!prev) return null;
+          const fid = prev.fileId || prev._id;
+          if (revertedMap[fid] !== undefined) {
+            return { ...prev, content: revertedMap[fid] };
+          }
+          return prev;
+        });
+
+        setFiles(prev => prev.map(f => {
+          const fid = f.fileId || f._id;
+          if (revertedMap[fid] !== undefined) {
+            return { ...f, content: revertedMap[fid] };
+          }
+          return f;
+        }));
+
+        if (codeRef.current) {
+          response.data.revertedFiles.forEach(rf => {
+            codeRef.current[rf.fileId] = rf.content;
+          });
+        }
+
+        setContentResetKey(k => k + 1);
+      } else if (discard && response.data.revertedContent !== undefined) {
         setSelectedFile(prev => prev ? { ...prev, content: response.data.revertedContent } : null);
         setFiles(prev => prev.map(f => (f.fileId || f._id) === (selectedFile?.fileId || selectedFile?._id) ? { ...f, content: response.data.revertedContent } : f));
         
@@ -320,6 +460,7 @@ const ProjectEditor = () => {
         if (codeRef.current && (selectedFile?.fileId || selectedFile?._id)) {
           codeRef.current[selectedFile.fileId || selectedFile._id] = response.data.revertedContent;
         }
+        setContentResetKey(k => k + 1);
       }
       
       toast.success(discard ? 'Session ended and changes discarded' : 'Collaboration session ended');
@@ -533,7 +674,9 @@ const ProjectEditor = () => {
     }
   };
 
-  if (loading) {
+  // Show loader while fetching project data OR while waiting for session-joined confirmation
+  // The second condition prevents the editor ever flashing as read-only for a joining guest.
+  if (loading || waitingForSession) {
     return <div className="h-[calc(100vh-73px)] w-full flex items-center justify-center bg-dark"><Loader2 className="animate-spin text-primary" size={48} /></div>;
   }
 

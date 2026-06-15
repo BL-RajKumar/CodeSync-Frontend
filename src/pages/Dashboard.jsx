@@ -106,7 +106,7 @@ const Dashboard = () => {
 
   return (
     <div className="container mx-auto px-4 mt-8 animate-fade-in mb-16">
-      <div className="glass-panel p-12 mb-12">
+      <div className="glass-panel bg-gradient-to-br from-primary/5 to-transparent p-12 mb-12">
         <h1 className="text-[2.5rem] mb-4 font-bold text-main">
           Welcome back, <span className="text-primary">{user?.username}</span>!
         </h1>
@@ -154,7 +154,7 @@ const Dashboard = () => {
             ) : projects.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {projects.map(project => (
-                  <div key={project.projectId} className="glass-panel p-6 flex flex-col transition-transform hover:-translate-y-1">
+                  <div key={project.projectId} className="glass-panel p-6 flex flex-col transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5">
                     <div className="flex justify-between items-start mb-4">
                       <h3 className="flex items-center gap-2 text-xl font-semibold text-main">
                         <Code size={18} className="text-muted" /> 
@@ -207,7 +207,7 @@ const Dashboard = () => {
                 {starredProjects.map(project => {
                   const pId = project._id || project.projectId;
                   return (
-                  <div key={pId} className="glass-panel p-6 flex flex-col transition-transform hover:-translate-y-1">
+                  <div key={pId} className="glass-panel p-6 flex flex-col transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5">
                     <div className="flex justify-between items-start mb-4">
                       <Link to={`/p/${pId}`} className="text-main hover:text-primary transition-colors group flex items-center gap-2">
                         <Code size={18} className="text-muted" /> 

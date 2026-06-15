@@ -191,8 +191,8 @@ const AdminManageLanguages = () => {
         ) : languages.length === 0 ? (
           <div className="text-center py-20 text-muted bg-white/5 border border-white/10 rounded-2xl">
             <Code size={48} className="mx-auto text-white/10 mb-4" />
-            <p className="text-lg font-medium text-white/60">No languages registered</p>
-            <p className="text-xs text-white/20 mt-1">Click "Add Language" to register a compiler setup.</p>
+            <p className="text-lg font-medium text-muted">No languages registered</p>
+            <p className="text-xs text-muted/50 mt-1">Click "Add Language" to register a compiler setup.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -220,7 +220,7 @@ const AdminManageLanguages = () => {
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="w-3 h-3 rounded-full border border-white/10" style={{ backgroundColor: lang.color }} />
-                      <h3 className="text-lg font-bold text-white truncate max-w-[150px]">{lang.displayName}</h3>
+                      <h3 className="text-lg font-bold text-main truncate max-w-[150px]">{lang.displayName}</h3>
                     </div>
                     <span className="text-xs text-muted font-mono">{lang.category} · Judge0 ID: {lang.id}</span>
                   </div>
@@ -228,11 +228,11 @@ const AdminManageLanguages = () => {
                   {/* Version Detail */}
                   <div className="text-xs bg-white/2 border border-white/5 p-3 rounded-xl space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-white/40 font-semibold">Compiler Version:</span>
-                      <span className="font-mono text-white/80">{lang.version || 'unknown'}</span>
+                      <span className="text-muted/70 font-semibold">Compiler Version:</span>
+                      <span className="font-mono text-main/80">{lang.version || 'unknown'}</span>
                     </div>
                     <div className="flex items-center justify-between pt-1 border-t border-white/5">
-                      <span className="text-white/40 font-semibold">Extensions:</span>
+                      <span className="text-muted/70 font-semibold">Extensions:</span>
                       <span className="font-mono text-primary/80 truncate max-w-[150px]" title={lang.extensions?.join(', ')}>
                         {lang.extensions?.join(', ') || 'none'}
                       </span>
@@ -250,12 +250,12 @@ const AdminManageLanguages = () => {
                   {/* Toggle Switch */}
                   <button 
                     onClick={() => handleToggleActive(lang)}
-                    className="flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-white cursor-pointer transition-colors"
+                    className="flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-main cursor-pointer transition-colors"
                   >
                     {lang.isActive ? (
                       <ToggleRight size={20} className="text-emerald-400" />
                     ) : (
-                      <ToggleLeft size={20} className="text-white/30" />
+                      <ToggleLeft size={20} className="text-muted/30" />
                     )}
                     <span>{lang.isActive ? 'Deactivate' : 'Activate'}</span>
                   </button>
@@ -264,7 +264,7 @@ const AdminManageLanguages = () => {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => openEditModal(lang)}
-                      className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white transition-all cursor-pointer"
+                      className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-muted hover:text-main transition-all cursor-pointer"
                       title="Edit settings"
                     >
                       <Edit2 size={13} />
@@ -293,12 +293,12 @@ const AdminManageLanguages = () => {
               
               {/* Modal Header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
-                <h3 className="text-lg font-bold text-white">
+                <h3 className="text-lg font-bold text-main">
                   {editingLang ? `Edit ${editingLang.displayName} Settings` : 'Add New Language'}
                 </h3>
                 <button 
                   onClick={() => setIsModalOpen(false)}
-                  className="text-muted hover:text-white transition-colors cursor-pointer"
+                  className="text-muted hover:text-main transition-colors cursor-pointer"
                 >
                   <X size={20} />
                 </button>
@@ -317,7 +317,7 @@ const AdminManageLanguages = () => {
                       placeholder="e.g. 93"
                       value={formId}
                       onChange={(e) => setFormId(e.target.value)}
-                      className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4.5 py-2.5 text-sm text-white focus:outline-none focus:border-primary placeholder-white/20"
+                      className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4.5 py-2.5 text-sm text-main focus:outline-none focus:border-primary placeholder-white/20"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -328,7 +328,7 @@ const AdminManageLanguages = () => {
                       placeholder="e.g. javascript"
                       value={formName}
                       onChange={(e) => setFormName(e.target.value)}
-                      className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4.5 py-2.5 text-sm text-white focus:outline-none focus:border-primary placeholder-white/20"
+                      className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4.5 py-2.5 text-sm text-main focus:outline-none focus:border-primary placeholder-white/20"
                     />
                   </div>
                 </div>
@@ -343,7 +343,7 @@ const AdminManageLanguages = () => {
                       placeholder="e.g. JavaScript"
                       value={formDisplayName}
                       onChange={(e) => setFormDisplayName(e.target.value)}
-                      className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4.5 py-2.5 text-sm text-white focus:outline-none focus:border-primary placeholder-white/20"
+                      className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4.5 py-2.5 text-sm text-main focus:outline-none focus:border-primary placeholder-white/20"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -353,7 +353,7 @@ const AdminManageLanguages = () => {
                       placeholder="e.g. Node.js 18.15.0"
                       value={formVersion}
                       onChange={(e) => setFormVersion(e.target.value)}
-                      className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4.5 py-2.5 text-sm text-white focus:outline-none focus:border-primary placeholder-white/20"
+                      className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4.5 py-2.5 text-sm text-main focus:outline-none focus:border-primary placeholder-white/20"
                     />
                   </div>
                 </div>
@@ -365,7 +365,7 @@ const AdminManageLanguages = () => {
                     <select
                       value={formCategory}
                       onChange={(e) => setFormCategory(e.target.value)}
-                      className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4.5 py-2.5 text-sm text-white focus:outline-none focus:border-primary"
+                      className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4.5 py-2.5 text-sm text-main focus:outline-none focus:border-primary"
                     >
                       <option value="Scripting">Scripting</option>
                       <option value="Compiled (Native)">Compiled (Native)</option>
@@ -381,7 +381,7 @@ const AdminManageLanguages = () => {
                       placeholder="e.g. .js, .jsx"
                       value={formExtensions}
                       onChange={(e) => setFormExtensions(e.target.value)}
-                      className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4.5 py-2.5 text-sm text-white focus:outline-none focus:border-primary placeholder-white/20"
+                      className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4.5 py-2.5 text-sm text-main focus:outline-none focus:border-primary placeholder-white/20"
                     />
                   </div>
                 </div>
@@ -395,7 +395,7 @@ const AdminManageLanguages = () => {
                       placeholder="e.g. js, jsx"
                       value={formAliases}
                       onChange={(e) => setFormAliases(e.target.value)}
-                      className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4.5 py-2.5 text-sm text-white focus:outline-none focus:border-primary placeholder-white/20"
+                      className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4.5 py-2.5 text-sm text-main focus:outline-none focus:border-primary placeholder-white/20"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -412,7 +412,7 @@ const AdminManageLanguages = () => {
                         placeholder="#f7df1e"
                         value={formColor}
                         onChange={(e) => setFormColor(e.target.value)}
-                        className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-primary placeholder-white/20"
+                        className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-main focus:outline-none focus:border-primary placeholder-white/20"
                       />
                     </div>
                   </div>
@@ -426,7 +426,7 @@ const AdminManageLanguages = () => {
                     rows="2"
                     value={formDescription}
                     onChange={(e) => setFormDescription(e.target.value)}
-                    className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4.5 py-2.5 text-sm text-white focus:outline-none focus:border-primary placeholder-white/20 resize-none"
+                    className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4.5 py-2.5 text-sm text-main focus:outline-none focus:border-primary placeholder-white/20 resize-none"
                   />
                 </div>
 
@@ -439,7 +439,7 @@ const AdminManageLanguages = () => {
                       placeholder="e.g. ruby:3.2-alpine"
                       value={formDockerImage}
                       onChange={(e) => setFormDockerImage(e.target.value)}
-                      className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4.5 py-2.5 text-sm text-white focus:outline-none focus:border-primary placeholder-white/20"
+                      className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4.5 py-2.5 text-sm text-main focus:outline-none focus:border-primary placeholder-white/20"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -449,7 +449,7 @@ const AdminManageLanguages = () => {
                       placeholder="e.g. ruby script.rb"
                       value={formDockerRunCmd}
                       onChange={(e) => setFormDockerRunCmd(e.target.value)}
-                      className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4.5 py-2.5 text-sm text-white focus:outline-none focus:border-primary placeholder-white/20"
+                      className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4.5 py-2.5 text-sm text-main focus:outline-none focus:border-primary placeholder-white/20"
                     />
                   </div>
                 </div>
@@ -463,7 +463,7 @@ const AdminManageLanguages = () => {
                     onChange={(e) => setFormIsActive(e.target.checked)}
                     className="h-4.5 w-4.5 rounded border-white/10 bg-[#16162a] text-primary focus:ring-primary"
                   />
-                  <label htmlFor="modalIsActive" className="text-xs font-semibold text-white/80 cursor-pointer">
+                  <label htmlFor="modalIsActive" className="text-xs font-semibold text-main/80 cursor-pointer">
                     Enable this language configuration instantly on save
                   </label>
                 </div>

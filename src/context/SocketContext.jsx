@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 import { toast } from 'react-hot-toast';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 
 const SocketContext = createContext(null);
@@ -12,10 +13,19 @@ export const SocketProvider = ({ children }) => {
   const [connected, setConnected] = useState(false);
   const socketRef = useRef(null);
   const { user } = useAuth();
+  const location = useLocation();
+
+  // Store location.search in a ref so the effect can read the CURRENT value
+  // without making it a reactive dependency (which would disconnect the socket
+  const sessionParam = new URLSearchParams(location.search).get('session');
 
   useEffect(() => {
-    // Only connect if user is authenticated
-    if (!user) {
+    const guestUsername = sessionParam ? sessionStorage.getItem(`collab_guest_name_${sessionParam}`) : null;
+    const guestUserId = sessionParam ? sessionStorage.getItem(`collab_guest_uid_${sessionParam}`) : null;
+    const sessionPassword = sessionParam ? (sessionStorage.getItem(`collab_pw_${sessionParam}`) || '') : '';
+
+    // Only connect if user is authenticated OR valid guest credentials exist
+    if (!user && (!sessionParam || !guestUsername || !guestUserId)) {
       if (socketRef.current) {
         socketRef.current.disconnect();
         socketRef.current = null;
@@ -25,12 +35,21 @@ export const SocketProvider = ({ children }) => {
       return;
     }
 
+    // If a socket already exists and is connected, don't recreate it
+    if (socketRef.current && socketRef.current.connected) {
+      return;
+    }
+
     const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
 
     const newSocket = io(SOCKET_URL, {
       withCredentials: true,
       auth: {
         token: document.cookie.match(/jwt=([^;]+)/)?.[1] || '',
+        guestUsername: guestUsername || '',
+        guestUserId: guestUserId || '',
+        sessionId: sessionParam || '',
+        sessionPassword: sessionPassword || '',
       },
       transports: ['websocket', 'polling'],
       reconnection: true,
@@ -97,7 +116,10 @@ export const SocketProvider = ({ children }) => {
       setSocket(null);
       setConnected(false);
     };
-  }, [user]);
+  // Only recreate the socket when the user auth state or the active session ID changes.
+  // Other URL changes (like changing files via the file param) must NOT trigger a socket reconnect.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, sessionParam]);
 
   return (
     <SocketContext.Provider value={{ socket, connected }}>

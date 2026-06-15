@@ -47,7 +47,7 @@ const AdminLayout = () => {
   ];
 
   return (
-    <div className="min-h-[calc(100vh-80px)] bg-[#0b0b14] text-main flex flex-col lg:flex-row font-sans max-w-7xl mx-auto px-4 md:px-8 pb-12 gap-8">
+    <div className="min-h-[calc(100vh-80px)] bg-transparent text-main flex flex-col lg:flex-row font-sans max-w-7xl mx-auto px-4 md:px-8 pb-12 gap-8">
       
       {/* Admin Panel Left Sidebar */}
       <aside className="w-full lg:w-64 shrink-0 flex flex-col gap-4">
@@ -58,7 +58,7 @@ const AdminLayout = () => {
             <ShieldAlert size={18} />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-white leading-none">Console Control</h2>
+            <h2 className="text-sm font-bold text-main leading-none">Console Control</h2>
             <span className="text-[0.65rem] text-primary font-bold uppercase tracking-wider mt-0.5 block">Admin Access</span>
           </div>
         </div>
@@ -76,7 +76,7 @@ const AdminLayout = () => {
                 className={`flex items-center gap-3.5 px-4 py-3 rounded-xl transition-all duration-200 group text-left ${
                   isActive 
                     ? 'bg-primary text-white shadow-lg shadow-primary/25 font-semibold' 
-                    : 'text-muted hover:text-white hover:bg-white/5 font-medium'
+                    : 'text-muted hover:text-main hover:bg-white/5 font-medium'
                 }`}
               >
                 <Icon 
@@ -88,7 +88,7 @@ const AdminLayout = () => {
                 <div className="truncate">
                   <span className="text-xs block leading-tight">{item.label}</span>
                   <span className={`text-[0.6rem] block font-normal truncate max-w-[170px] mt-0.5 ${
-                    isActive ? 'text-white/70' : 'text-white/20'
+                    isActive ? 'text-white/70' : 'text-muted/70'
                   }`}>
                     {item.description}
                   </span>
@@ -103,7 +103,7 @@ const AdminLayout = () => {
           <span className="text-[0.65rem] font-bold text-primary tracking-wide uppercase">Sandbox Engine Status</span>
           <div className="flex items-center gap-2 mt-2">
             <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-xs text-white/80 font-medium">Docker Sandbox: Active</span>
+            <span className="text-xs text-main/80 font-medium">Docker Sandbox: Active</span>
           </div>
           <p className="text-[0.65rem] text-muted leading-relaxed mt-2">
             All sandbox routes, history tracking, execution termination rules and language parameters are running operational.

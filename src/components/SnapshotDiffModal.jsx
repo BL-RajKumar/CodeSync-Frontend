@@ -1,6 +1,7 @@
 import React from 'react';
 import { DiffEditor } from '@monaco-editor/react';
 import { X, Loader2 } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
 const SnapshotDiffModal = ({
   isOpen,
@@ -11,6 +12,7 @@ const SnapshotDiffModal = ({
   fileName,
   snapshotHash
 }) => {
+  const { theme } = useTheme();
   if (!isOpen) return null;
 
   return (
@@ -45,7 +47,7 @@ const SnapshotDiffModal = ({
           <DiffEditor
             height="100%"
             language={language || 'plaintext'}
-            theme="vs-dark"
+            theme={theme === 'dark' ? 'vs-dark' : 'light'}
             original={originalContent || ''}
             modified={modifiedContent || ''}
             options={{

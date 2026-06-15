@@ -4,6 +4,27 @@ import { toast } from 'react-hot-toast';
 import axios from 'axios';
 import UserSearchInput from './UserSearchInput';
 
+// Deterministic avatar background from userId or username
+const AVATAR_PALETTES = [
+  ['#6366f1', '#818cf8'], // indigo → violet
+  ['#8b5cf6', '#a78bfa'], // purple → lavender
+  ['#ec4899', '#f472b6'], // pink → rose
+  ['#0ea5e9', '#38bdf8'], // sky → light blue
+  ['#14b8a6', '#2dd4bf'], // teal → cyan
+  ['#f59e0b', '#fbbf24'], // amber → yellow
+  ['#10b981', '#34d399'], // emerald → green
+  ['#ef4444', '#f87171'], // red → coral
+];
+
+function getAvatarColors(userId) {
+  if (!userId) return AVATAR_PALETTES[0];
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    hash = userId.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return AVATAR_PALETTES[Math.abs(hash) % AVATAR_PALETTES.length];
+}
+
 const CollaborationBar = ({ session, participants, isOwner, onEndSession, onStartSession, onKickParticipant, shareLink, isStarting }) => {
   const [showInviteInput, setShowInviteInput] = useState(false);
   const [inviteUsername, setInviteUsername] = useState('');
@@ -68,38 +89,44 @@ const CollaborationBar = ({ session, participants, isOwner, onEndSession, onStar
 
       {/* Participant avatars */}
       <div className="flex items-center -space-x-2">
-        {participants.map((p, i) => (
-          <div
-            key={p.userId || i}
-            className="w-7 h-7 rounded-full border-2 border-[#181825] flex items-center justify-center text-[0.6rem] font-bold bg-gradient-to-br from-primary/60 to-[#818cf8]/60 text-white relative group cursor-default"
-          >
-            {p.avatarUrl ? (
-              <img src={p.avatarUrl} alt={p.username} className="w-full h-full rounded-full object-cover" />
-            ) : (
-              p.username?.charAt(0).toUpperCase()
-            )}
-            
-            {/* Kick Button (only for owner, and cannot kick self) */}
-            {isOwner && p.userId !== session.ownerId && (
-              <button
-                onClick={() => {
-                  if (window.confirm(`Kick ${p.username} from the session?`)) {
-                    onKickParticipant(p.userId);
-                  }
-                }}
-                className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity z-20 hover:bg-red-600 shadow-sm"
-                title={`Kick ${p.username}`}
-              >
-                <X size={10} strokeWidth={3} />
-              </button>
-            )}
+        {participants.map((p, i) => {
+          const [from, to] = getAvatarColors(p.userId);
+          const hasAvatar = p.avatarUrl && p.avatarUrl !== 'undefined' && p.avatarUrl !== 'null' && p.avatarUrl !== '';
+          return (
+            <div
+              key={p.userId || i}
+              style={!hasAvatar ? { background: `linear-gradient(135deg, ${from}, ${to})` } : {}}
+              className="w-7 h-7 rounded-full border-2 border-white/20 flex items-center justify-center text-[0.6rem] font-bold text-white relative group cursor-default shadow-md flex-shrink-0"
+            >
+              {hasAvatar ? (
+                <img src={p.avatarUrl} alt={p.username} className="w-full h-full rounded-full object-cover" />
+              ) : (
+                <span className="select-none leading-none">{p.username ? p.username.charAt(0).toUpperCase() : '?'}</span>
+              )}
 
-            {/* Tooltip */}
-            <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 bg-dark border border-white/10 text-main text-[0.6rem] px-1.5 py-0.5 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-              {p.username} {p.userId === session.ownerId ? '(Host)' : ''}
+              {/* Kick Button (only for owner, and cannot kick self) */}
+              {isOwner && p.userId !== session.ownerId && (
+                <button
+                  onClick={() => {
+                    if (window.confirm(`Kick ${p.username} from the session?`)) {
+                      onKickParticipant(p.userId);
+                    }
+                  }}
+                  className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity z-20 hover:bg-red-600 shadow-sm"
+                  title={`Kick ${p.username}`}
+                >
+                  <X size={10} strokeWidth={3} />
+                </button>
+              )}
+
+              {/* Tooltip */}
+              <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 bg-slate-900 border border-slate-700 text-slate-100 text-[0.6rem] px-1.5 py-0.5 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 shadow-md">
+                {p.username} {p.userId === session.ownerId ? '(Host)' : '(Guest)'}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
+
       </div>
 
       {/* Participant count */}
@@ -131,7 +158,7 @@ const CollaborationBar = ({ session, participants, isOwner, onEndSession, onStar
               value={inviteUsername}
               onChange={(e) => setInviteUsername(e.target.value)}
               onSelectUser={(selectedIdentifier) => setInviteUsername(selectedIdentifier)}
-              className="bg-transparent border-none text-[0.7rem] text-main w-32 focus:outline-none focus:ring-0 placeholder-white/20 p-0 px-1 py-0.5"
+              className="bg-transparent border-none text-[0.7rem] text-main w-32 focus:outline-none focus:ring-0 placeholder-zinc-400 dark:placeholder-white/20 p-0 px-1 py-0.5"
               disabled={isInviting}
               autoFocus
             />
@@ -167,24 +194,24 @@ const CollaborationBar = ({ session, participants, isOwner, onEndSession, onStar
         <div className="relative flex items-center ml-2 border-l border-white/10 pl-2">
           {showEndConfirm ? (
             <div className="flex items-center gap-1.5 animate-fade-in bg-red-500/10 border border-red-500/20 rounded-md px-2 py-1">
-              <span className="text-[10px] text-red-400 font-semibold mr-1 uppercase tracking-wider">End Session:</span>
+              <span className="text-[10px] text-red-500 dark:text-red-400 font-semibold mr-1 uppercase tracking-wider">End:</span>
               <button
                 onClick={() => { setShowEndConfirm(false); onEndSession(false); }}
-                className="px-2 py-0.5 text-[10px] font-medium rounded bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors"
+                className="px-2 py-0.5 text-[10px] font-semibold rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors"
                 title="Save all changes made during this session"
               >
                 Keep Changes
               </button>
               <button
                 onClick={() => { setShowEndConfirm(false); onEndSession(true); }}
-                className="px-2 py-0.5 text-[10px] font-medium rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+                className="px-2 py-0.5 text-[10px] font-semibold rounded bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 transition-colors"
                 title="Revert the file to its original state"
               >
                 Discard Changes
               </button>
               <button
                 onClick={() => setShowEndConfirm(false)}
-                className="px-1.5 py-0.5 text-[10px] font-medium rounded hover:bg-white/10 text-muted transition-colors ml-1"
+                className="px-1.5 py-0.5 text-[10px] font-semibold rounded hover:bg-black/5 dark:hover:bg-white/10 text-muted transition-colors ml-1"
                 title="Cancel"
               >
                 Cancel
