@@ -3,8 +3,10 @@ import { Excalidraw } from '@excalidraw/excalidraw';
 import '@excalidraw/excalidraw/index.css';
 import axios from 'axios';
 import { Loader2 } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
 const WhiteboardPanel = ({ projectId, socket, collabSession }) => {
+  const { theme } = useTheme();
   const [initialElements, setInitialElements] = useState([]);
   const [loading, setLoading] = useState(true);
   const excalidrawAPI = useRef(null);
@@ -81,7 +83,7 @@ const WhiteboardPanel = ({ projectId, socket, collabSession }) => {
 
   if (loading) {
     return (
-      <div className="h-full w-full flex flex-col items-center justify-center bg-[#1e1e2e] text-muted p-16">
+      <div className="h-full w-full flex flex-col items-center justify-center bg-card border border-white/10 rounded-xl text-muted p-16">
         <Loader2 className="animate-spin text-primary mb-4" size={48} />
         <p className="text-lg">Initializing Whiteboard...</p>
       </div>
@@ -89,17 +91,17 @@ const WhiteboardPanel = ({ projectId, socket, collabSession }) => {
   }
 
   return (
-    <div className="w-full h-full relative border border-white/10 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+    <div className="w-full h-full relative border border-white/10 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.4)] bg-card">
       <Excalidraw
         excalidrawAPI={(api) => {
           excalidrawAPI.current = api;
         }}
         initialData={{
           elements: initialElements,
-          appState: { theme: 'dark', viewBackgroundColor: '#1e1e2e' }
+          appState: { theme: theme, viewBackgroundColor: theme === 'dark' ? '#1e1e2e' : '#ffffff' }
         }}
         onChange={onChange}
-        theme="dark"
+        theme={theme}
       />
     </div>
   );

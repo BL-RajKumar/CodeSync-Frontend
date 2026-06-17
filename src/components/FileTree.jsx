@@ -191,11 +191,13 @@ const FileTree = ({ files, onCreateFile, onRenameFile, onDeleteFile, onRenameFol
         let existingNode = currentLevel.find(n => n.name === part);
         
         if (!existingNode) {
+          const fid = file.fileId || file._id;
           existingNode = {
             name: part,
             path: currentPath,
             type: isFile ? 'file' : 'folder',
-            fileId: isFile ? file.fileId : null,
+            fileId: isFile ? fid : null,
+            _id: isFile ? fid : null,
             content: isFile ? file.content : undefined,
             language: isFile ? file.language : undefined,
             size: isFile ? file.size : undefined,

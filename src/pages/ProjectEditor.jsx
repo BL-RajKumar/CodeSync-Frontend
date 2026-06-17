@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
-import { Loader2, FolderTree, Search, Play, History, Brush } from 'lucide-react';
+import { Loader2, FolderTree, Search, Play, History, Brush, Pencil, Check, X as XIcon } from 'lucide-react';
 import FileTree from '../components/FileTree';
 import SearchPanel from '../components/SearchPanel';
 import SandboxPanel from '../components/SandboxPanel';
@@ -33,16 +33,30 @@ const ProjectEditor = () => {
   const [scrollToLine, setScrollToLine] = useState(null);
   const [diffModalState, setDiffModalState] = useState({ isOpen: false, snapshot: null });
 
+  // Inline project meta editing state
+  const [editingMeta, setEditingMeta] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+
   // Collaboration state
   const [collabSession, setCollabSession] = useState(null);
   const [collabParticipants, setCollabParticipants] = useState([]);
   const [shareLink, setShareLink] = useState('');
   const [isStartingCollab, setIsStartingCollab] = useState(false);
+  // When joining via a session link, stay on the loader until session-joined fires
+  // so the editor never renders with isReadOnly=true for a valid guest.
+  const [waitingForSession, setWaitingForSession] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return !!params.get('session');
+  });
 
   // Ref to hold the absolute latest code for each file (bypassing autosave delays)
   const codeRef = useRef({});
   // Ref to prevent auto-rejoining a session we were just kicked from
   const kickedSessionIdRef = useRef(null);
+  
+  const selectedFileRef = useRef(null);
+  selectedFileRef.current = selectedFile;
 
   // Bump this key to force the CodeEditor to reload content (e.g. snapshot restore)
   // Do NOT bump it on auto-save — that would cause cursor jumps.
@@ -88,13 +102,44 @@ const ProjectEditor = () => {
     document.body.style.userSelect = 'none';
   };
 
+  // Set up Axios request interceptor to attach guest validation headers
+  useEffect(() => {
+    const interceptor = axios.interceptors.request.use((config) => {
+      const sessionParam = searchParams.get('session');
+      if (sessionParam) {
+        config.headers['x-session-id'] = sessionParam;
+        const pw = sessionStorage.getItem(`collab_pw_${sessionParam}`);
+        if (pw) config.headers['x-session-password'] = pw;
+        const guestName = sessionStorage.getItem(`collab_guest_name_${sessionParam}`);
+        const guestUid = sessionStorage.getItem(`collab_guest_uid_${sessionParam}`);
+        if (guestName) config.headers['x-guest-username'] = guestName;
+        if (guestUid) config.headers['x-guest-userid'] = guestUid;
+      }
+      return config;
+    });
+
+    return () => {
+      axios.interceptors.request.eject(interceptor);
+    };
+  }, [searchParams]);
+
   useEffect(() => {
     const fetchProjectAndFiles = async () => {
       try {
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
         
-        // Pass session information if we joined via a collaboration link
+        // Check if guest user is trying to join without entering username
         const sessionParam = searchParams.get('session');
+        if (sessionParam && !user) {
+          const guestName = sessionStorage.getItem(`collab_guest_name_${sessionParam}`);
+          const guestUid = sessionStorage.getItem(`collab_guest_uid_${sessionParam}`);
+          if (!guestName || !guestUid) {
+            navigate(`/collab/${sessionParam}`, { replace: true });
+            return;
+          }
+        }
+
+        // Pass session information if we joined via a collaboration link
         const sessionPassword = sessionParam ? (sessionStorage.getItem(`collab_pw_${sessionParam}`) || '') : '';
         let querySuffix = '';
         if (sessionParam) {
@@ -142,17 +187,30 @@ const ProjectEditor = () => {
     socket.emit('join-session', { sessionId: sessionParam, password });
   }, [searchParams, socket, connected, collabSession]);
 
+  // ─── Safety timeout: if session-joined never fires (bad password, kick, etc.)
+  // release the loader gate after 6 seconds so the user isn't permanently stuck.
+  useEffect(() => {
+    if (!waitingForSession) return;
+    const timer = setTimeout(() => setWaitingForSession(false), 6000);
+    return () => clearTimeout(timer);
+  }, [waitingForSession]);
+
   // ─── SOCKET EVENT LISTENERS ─────────────────────────
   useEffect(() => {
     if (!socket) return;
 
     const handleSessionJoined = (data) => {
-      // Check if this is the active file (compare against searchParams file if data.fileId is missing)
+      // Robustly resolve the current file ID regardless of object shape
+      // (FileTree nodes expose fileId/_id directly; raw DB objects expose _id)
+      const currentFileId = selectedFileRef.current
+        ? (selectedFileRef.current.fileId || selectedFileRef.current._id || selectedFileRef.current.originalFile?._id || selectedFileRef.current.originalFile?.fileId)
+        : null;
       const expectedFileId = data.fileId || searchParams.get('file');
-      if (selectedFile && expectedFileId && selectedFile.fileId !== expectedFileId && selectedFile._id !== expectedFileId) return;
-      
+
+      // Only guard against wrong-file events when BOTH IDs are known and they differ
+      if (currentFileId && expectedFileId && currentFileId.toString() !== expectedFileId.toString()) return;
+
       setCollabSession(prev => {
-        // Prevent object reference change if data is same
         if (prev && prev.sessionId === data.sessionId) return prev;
         return {
           sessionId: data.sessionId,
@@ -162,10 +220,24 @@ const ProjectEditor = () => {
       });
       setCollabParticipants(data.participants || []);
 
-      // Set the file content from the live session
-      if (data.fileContent !== undefined && selectedFile) {
+      // Always update the files array so the collab file has the current live content,
+      // even if selectedFileRef.current is null (race condition where socket fires before
+      // the HTTP file load has selected a file yet).
+      if (data.fileContent !== undefined && data.fileId) {
+        const fileIdStr = data.fileId.toString();
+        setFiles(prev => prev.map(f => {
+          const fid = (f.fileId || f._id || '').toString();
+          return fid === fileIdStr ? { ...f, content: data.fileContent } : f;
+        }));
+      }
+
+      // Also update selectedFile if it is the collab file
+      if (data.fileContent !== undefined && selectedFileRef.current) {
         setSelectedFile(prev => ({ ...prev, content: data.fileContent }));
       }
+
+      // Session is now confirmed — release the loader gate
+      setWaitingForSession(false);
 
       setShareLink(`${window.location.origin}/collab/${data.sessionId}`);
       toast.success('Joined collaboration session!');
@@ -185,51 +257,147 @@ const ProjectEditor = () => {
       toast(`${userData.username} left`, { icon: '👋' });
     };
 
-    const handleSessionEnded = ({ message, revertedContent }) => {
+    const handleSessionEnded = ({ message, revertedContent, revertedFiles }) => {
       setCollabSession(null);
       setCollabParticipants([]);
       setShareLink('');
-      
+
       const newParams = new URLSearchParams(searchParams);
       newParams.delete('session');
       newParams.delete('file');
       newParams.delete('sessionPassword');
       setSearchParams(newParams, { replace: true });
-      
-      if (revertedContent !== undefined) {
+
+      if (revertedFiles && revertedFiles.length > 0) {
+        const revertedMap = {};
+        revertedFiles.forEach(rf => {
+          revertedMap[rf.fileId] = rf.content;
+        });
+
+        setSelectedFile(prev => {
+          if (!prev) return null;
+          const fid = prev.fileId || prev._id;
+          if (revertedMap[fid] !== undefined) {
+            return { ...prev, content: revertedMap[fid] };
+          }
+          return prev;
+        });
+
+        setFiles(prev => prev.map(f => {
+          const fid = f.fileId || f._id;
+          if (revertedMap[fid] !== undefined) {
+            return { ...f, content: revertedMap[fid] };
+          }
+          return f;
+        }));
+
+        if (codeRef.current) {
+          revertedFiles.forEach(rf => {
+            codeRef.current[rf.fileId] = rf.content;
+          });
+        }
+
+        setContentResetKey(k => k + 1);
+      } else if (revertedContent !== undefined) {
         setSelectedFile(prev => prev ? { ...prev, content: revertedContent } : null);
-        setFiles(prev => prev.map(f => (f.fileId || f._id) === (selectedFile?.fileId || selectedFile?._id) ? { ...f, content: revertedContent } : f));
+        const selFid = selectedFileRef.current?.fileId || selectedFileRef.current?._id;
+        setFiles(prev => prev.map(f => (f.fileId || f._id) === selFid ? { ...f, content: revertedContent } : f));
+        if (codeRef.current && selFid) {
+          codeRef.current[selFid] = revertedContent;
+        }
+        setContentResetKey(k => k + 1);
       }
-      
+
       toast(message || 'Session ended', { icon: '🔴' });
     };
 
     const handleErrorMessage = ({ message }) => {
       toast.error(message);
+      // Release loader gate — join was rejected
+      setWaitingForSession(false);
     };
 
     const handleParticipantKicked = ({ kickedUserId, kickedUsername, message }) => {
       const myId = user?.userId || user?._id;
       if (kickedUserId === myId) {
-        // I was kicked — mark the session to prevent auto-rejoin race condition
-        kickedSessionIdRef.current = collabSession?.sessionId || searchParams.get('session');
-        
-        // leave the session
+        const sessionParam = collabSession?.sessionId || searchParams.get('session');
+        kickedSessionIdRef.current = sessionParam;
+
+        if (sessionParam) {
+          sessionStorage.removeItem(`collab_guest_name_${sessionParam}`);
+          sessionStorage.removeItem(`collab_guest_uid_${sessionParam}`);
+          sessionStorage.removeItem(`collab_pw_${sessionParam}`);
+        }
+
         socket.emit('leave-session');
         setCollabSession(null);
         setCollabParticipants([]);
         setShareLink('');
-        
-        // Remove session parameters from URL so we don't automatically rejoin
+        setWaitingForSession(false);
+
         const newParams = new URLSearchParams(searchParams);
         newParams.delete('session');
         newParams.delete('file');
         newParams.delete('sessionPassword');
         setSearchParams(newParams, { replace: true });
-        
+
         toast.error('You have been removed from the session by the host.');
       } else {
         toast(`${kickedUsername} was removed`, { icon: '🚫' });
+      }
+    };
+
+    const handleForceDisconnect = ({ reason }) => {
+      const sessionParam = searchParams.get('session');
+      if (sessionParam) {
+        sessionStorage.removeItem(`collab_guest_name_${sessionParam}`);
+        sessionStorage.removeItem(`collab_guest_uid_${sessionParam}`);
+        sessionStorage.removeItem(`collab_pw_${sessionParam}`);
+      }
+      setCollabSession(null);
+      setCollabParticipants([]);
+      setShareLink('');
+      setWaitingForSession(false);
+      toast.error(reason || 'You have been disconnected from the session.');
+    };
+
+    const handleContentSync = ({ fileId, content }) => {
+      setFiles(prev => prev.map(f => {
+        if ((f.fileId || f._id) === fileId) {
+          return { ...f, content };
+        }
+        return f;
+      }));
+
+      setSelectedFile(prev => {
+        if (prev && (prev.fileId || prev._id) === fileId) {
+          return { ...prev, content };
+        }
+        return prev;
+      });
+
+      if (codeRef.current) {
+        codeRef.current[fileId] = content;
+      }
+    };
+
+    const handleRemoteCodeChange = ({ fileId, changes }) => {
+      setFiles(prev => prev.map(f => {
+        if ((f.fileId || f._id) === fileId) {
+          return { ...f, content: changes };
+        }
+        return f;
+      }));
+
+      setSelectedFile(prev => {
+        if (prev && (prev.fileId || prev._id) === fileId) {
+          return { ...prev, content: changes };
+        }
+        return prev;
+      });
+
+      if (codeRef.current) {
+        codeRef.current[fileId] = changes;
       }
     };
 
@@ -239,6 +407,9 @@ const ProjectEditor = () => {
     socket.on('session-ended', handleSessionEnded);
     socket.on('error-message', handleErrorMessage);
     socket.on('participant-kicked', handleParticipantKicked);
+    socket.on('force-disconnect', handleForceDisconnect);
+    socket.on('content-sync', handleContentSync);
+    socket.on('code-change', handleRemoteCodeChange);
 
     return () => {
       socket.off('session-joined', handleSessionJoined);
@@ -247,8 +418,11 @@ const ProjectEditor = () => {
       socket.off('session-ended', handleSessionEnded);
       socket.off('error-message', handleErrorMessage);
       socket.off('participant-kicked', handleParticipantKicked);
+      socket.off('force-disconnect', handleForceDisconnect);
+      socket.off('content-sync', handleContentSync);
+      socket.off('code-change', handleRemoteCodeChange);
     };
-  }, [socket, selectedFile]);
+  }, [socket]);
 
   // ─── Cleanup: leave session on unmount ──────────────
   // Use a ref to track the current sessionId so we don't trigger cleanup on every render
@@ -312,7 +486,37 @@ const ProjectEditor = () => {
       setSearchParams(newParams, { replace: true });
       
       // Update UI with reverted content directly from HTTP response for perfect reflection
-      if (discard && response.data.revertedContent !== undefined) {
+      if (discard && response.data.revertedFiles && response.data.revertedFiles.length > 0) {
+        const revertedMap = {};
+        response.data.revertedFiles.forEach(rf => {
+          revertedMap[rf.fileId] = rf.content;
+        });
+
+        setSelectedFile(prev => {
+          if (!prev) return null;
+          const fid = prev.fileId || prev._id;
+          if (revertedMap[fid] !== undefined) {
+            return { ...prev, content: revertedMap[fid] };
+          }
+          return prev;
+        });
+
+        setFiles(prev => prev.map(f => {
+          const fid = f.fileId || f._id;
+          if (revertedMap[fid] !== undefined) {
+            return { ...f, content: revertedMap[fid] };
+          }
+          return f;
+        }));
+
+        if (codeRef.current) {
+          response.data.revertedFiles.forEach(rf => {
+            codeRef.current[rf.fileId] = rf.content;
+          });
+        }
+
+        setContentResetKey(k => k + 1);
+      } else if (discard && response.data.revertedContent !== undefined) {
         setSelectedFile(prev => prev ? { ...prev, content: response.data.revertedContent } : null);
         setFiles(prev => prev.map(f => (f.fileId || f._id) === (selectedFile?.fileId || selectedFile?._id) ? { ...f, content: response.data.revertedContent } : f));
         
@@ -320,6 +524,7 @@ const ProjectEditor = () => {
         if (codeRef.current && (selectedFile?.fileId || selectedFile?._id)) {
           codeRef.current[selectedFile.fileId || selectedFile._id] = response.data.revertedContent;
         }
+        setContentResetKey(k => k + 1);
       }
       
       toast.success(discard ? 'Session ended and changes discarded' : 'Collaboration session ended');
@@ -408,6 +613,18 @@ const ProjectEditor = () => {
       if ((selectedFile?.fileId || selectedFile?._id) === fileId) {
         setSelectedFile(prev => ({ ...prev, content: newContent }));
       }
+
+      if (codeRef.current) {
+        codeRef.current[fileId] = newContent;
+      }
+
+      if (socket && collabSession) {
+        socket.emit('content-sync', {
+          sessionId: collabSession.sessionId,
+          fileId,
+          content: newContent,
+        });
+      }
       
       if (!isAutoSave) {
         toast.success('File saved');
@@ -420,6 +637,15 @@ const ProjectEditor = () => {
       throw error; // Rethrow to CodeEditor so it stops the saving spinner
     }
   };
+
+  const handleLocalChange = useCallback((fileId, newContent) => {
+    setFiles(prev => prev.map(f => {
+      if ((f.fileId || f._id) === fileId) {
+        return { ...f, content: newContent };
+      }
+      return f;
+    }));
+  }, []);
 
   const handleRenameFolder = async (node, newName, newPath) => {
     try {
@@ -533,7 +759,27 @@ const ProjectEditor = () => {
     }
   };
 
-  if (loading) {
+  const handleSaveMeta = async () => {
+    const trimmedName = editName.trim();
+    if (!trimmedName) { toast.error('Project name cannot be empty'); return; }
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      await axios.patch(`${apiUrl}/projects/${projectId}`, {
+        name: trimmedName,
+        description: editDesc.trim(),
+      }, { withCredentials: true });
+      // Only update name/description to preserve populated ownerId and other fields
+      setProject(prev => ({ ...prev, name: trimmedName, description: editDesc.trim() }));
+      setEditingMeta(false);
+      toast.success('Project updated');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update project');
+    }
+  };
+
+  // Show loader while fetching project data OR while waiting for session-joined confirmation
+  // The second condition prevents the editor ever flashing as read-only for a joining guest.
+  if (loading || waitingForSession) {
     return <div className="h-[calc(100vh-73px)] w-full flex items-center justify-center bg-dark"><Loader2 className="animate-spin text-primary" size={48} /></div>;
   }
 
@@ -634,10 +880,61 @@ const ProjectEditor = () => {
 
       {/* Sidebar Panel */}
       <div className="w-[280px] shrink-0 border-r border-white/10 flex flex-col bg-[#1e1e2e]">
-        <div className="p-3 border-b border-white/5 font-semibold text-sm truncate opacity-80 uppercase tracking-widest text-primary flex justify-between items-center">
-          <span>{project?.name}</span>
-          {isReadOnly && <span className="bg-white/10 text-[0.6rem] px-2 py-0.5 rounded text-muted">Read Only</span>}
-        </div>
+        {/* Project name header — click pencil to edit (owner only) */}
+        {editingMeta ? (
+          <div className="p-2 border-b border-white/5 flex flex-col gap-1.5">
+            <input
+              autoFocus
+              value={editName}
+              onChange={e => setEditName(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleSaveMeta(); if (e.key === 'Escape') setEditingMeta(false); }}
+              className="w-full bg-white/5 border border-white/10 rounded px-2 py-1 text-sm text-main focus:outline-none focus:border-primary"
+              placeholder="Project name"
+              maxLength={80}
+            />
+            <input
+              value={editDesc}
+              onChange={e => setEditDesc(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleSaveMeta(); if (e.key === 'Escape') setEditingMeta(false); }}
+              className="w-full bg-white/5 border border-white/10 rounded px-2 py-1 text-xs text-muted focus:outline-none focus:border-primary"
+              placeholder="Description (optional)"
+              maxLength={200}
+            />
+            <div className="flex gap-1.5 justify-end mt-0.5">
+              <button
+                onClick={() => setEditingMeta(false)}
+                className="flex items-center gap-1 text-[10px] text-muted hover:text-main px-2 py-0.5 rounded bg-white/5 border border-white/10"
+              >
+                <XIcon size={10} /> Cancel
+              </button>
+              <button
+                onClick={handleSaveMeta}
+                className="flex items-center gap-1 text-[10px] text-emerald-400 hover:text-emerald-300 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20"
+              >
+                <Check size={10} /> Save
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="p-3 border-b border-white/5 flex justify-between items-center group">
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-sm truncate opacity-80 uppercase tracking-widest text-primary">{project?.name}</div>
+              {project?.description && (
+                <div className="text-[10px] text-muted truncate mt-0.5">{project.description}</div>
+              )}
+            </div>
+            {!isReadOnly && (
+              <button
+                onClick={() => { setEditName(project?.name || ''); setEditDesc(project?.description || ''); setEditingMeta(true); }}
+                className="ml-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-white/10 text-muted hover:text-primary"
+                title="Edit project name & description"
+              >
+                <Pencil size={12} />
+              </button>
+            )}
+            {isReadOnly && <span className="bg-white/10 text-[0.6rem] px-2 py-0.5 rounded text-muted">Read Only</span>}
+          </div>
+        )}
         <div className="flex-1 overflow-hidden">
           {sidebarTab === 'files' && (
             <div className="h-full flex flex-col">
@@ -750,6 +1047,7 @@ const ProjectEditor = () => {
                 snapshotId={selectedFile?.snapshotId || null}
                 codeRef={codeRef}
                 forceContentKey={contentResetKey}
+                onLocalChange={handleLocalChange}
               />
             </div>
           ) : (

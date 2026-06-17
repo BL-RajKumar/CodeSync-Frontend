@@ -56,6 +56,21 @@ const PackageManager = ({ files, onSaveFile, isReadOnly }) => {
         pkgName = pkgName.substring(0, atIndex);
       }
 
+      // If version is latest, attempt to fetch the actual semver version from NPM registry
+      if (pkgVersion === 'latest') {
+        try {
+          const res = await fetch(`https://registry.npmjs.org/${pkgName}/latest`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.version) {
+              pkgVersion = `^${data.version}`;
+            }
+          }
+        } catch (err) {
+          console.warn(`Failed to fetch latest version for ${pkgName}, falling back to 'latest'`, err);
+        }
+      }
+
       parsed.dependencies[pkgName] = pkgVersion;
       
       const newContent = JSON.stringify(parsed, null, 2);

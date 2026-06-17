@@ -1,6 +1,8 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { DiffEditor } from '@monaco-editor/react';
 import { X, Loader2 } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
 const SnapshotDiffModal = ({
   isOpen,
@@ -11,9 +13,10 @@ const SnapshotDiffModal = ({
   fileName,
   snapshotHash
 }) => {
+  const { theme } = useTheme();
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 md:p-8">
       <div className="bg-[#1e1e2e] border border-white/10 rounded-xl w-full max-w-6xl h-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
         
@@ -45,7 +48,7 @@ const SnapshotDiffModal = ({
           <DiffEditor
             height="100%"
             language={language || 'plaintext'}
-            theme="vs-dark"
+            theme={theme === 'dark' ? 'vs-dark' : 'light'}
             original={originalContent || ''}
             modified={modifiedContent || ''}
             options={{
@@ -66,7 +69,8 @@ const SnapshotDiffModal = ({
           />
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

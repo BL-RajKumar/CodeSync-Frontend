@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
-import { LogOut, Code2, User as UserIcon, Search, Bell, ChevronDown } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
+import { LogOut, Code2, User as UserIcon, Search, Bell, ChevronDown, Sun, Moon } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import NotificationDropdown from './NotificationDropdown';
@@ -10,6 +11,7 @@ import NotificationDropdown from './NotificationDropdown';
 const Navbar = () => {
   const { user, logout } = useAuth();
   const { socket } = useSocket();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -191,6 +193,15 @@ const Navbar = () => {
 
         <div className="flex items-center gap-6">
           <Link to="/explore" className="text-muted font-medium hover:text-main transition-colors duration-150">Explore</Link>
+          
+          <button
+            onClick={toggleTheme}
+            className="text-muted hover:text-main p-2 rounded-xl transition-all duration-150 flex items-center justify-center cursor-pointer hover:bg-white/5"
+            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            type="button"
+          >
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
 
           {user ? (
             <>
@@ -209,35 +220,35 @@ const Navbar = () => {
                       <Link 
                         to="/admin/users" 
                         onClick={() => setAdminDropdownOpen(false)}
-                        className="block px-4 py-2 text-xs font-semibold text-muted hover:text-white hover:bg-white/5 transition-colors"
+                        className="block px-4 py-2 text-xs font-semibold text-muted hover:text-main hover:bg-white/5 transition-colors"
                       >
                         Users Management
                       </Link>
                       <Link 
                         to="/admin/sessions" 
                         onClick={() => setAdminDropdownOpen(false)}
-                        className="block px-4 py-2 text-xs font-semibold text-muted hover:text-white hover:bg-white/5 transition-colors"
+                        className="block px-4 py-2 text-xs font-semibold text-muted hover:text-main hover:bg-white/5 transition-colors"
                       >
                         Active Sessions
                       </Link>
                       <Link 
                         to="/admin/jobs" 
                         onClick={() => setAdminDropdownOpen(false)}
-                        className="block px-4 py-2 text-xs font-semibold text-muted hover:text-white hover:bg-white/5 transition-colors"
+                        className="block px-4 py-2 text-xs font-semibold text-muted hover:text-main hover:bg-white/5 transition-colors"
                       >
                         Running Jobs
                       </Link>
                       <Link 
                         to="/admin/analytics" 
                         onClick={() => setAdminDropdownOpen(false)}
-                        className="block px-4 py-2 text-xs font-semibold text-muted hover:text-white hover:bg-white/5 transition-colors"
+                        className="block px-4 py-2 text-xs font-semibold text-muted hover:text-main hover:bg-white/5 transition-colors"
                       >
                         Platform Analytics
                       </Link>
                       <Link 
                         to="/admin/languages" 
                         onClick={() => setAdminDropdownOpen(false)}
-                        className="block px-4 py-2 text-xs font-semibold text-muted hover:text-white hover:bg-white/5 transition-colors"
+                        className="block px-4 py-2 text-xs font-semibold text-muted hover:text-main hover:bg-white/5 transition-colors"
                       >
                         Sandbox Languages
                       </Link>

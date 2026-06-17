@@ -5,6 +5,7 @@ import { Save, Loader2, Play, MessageSquare } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import CollaborationBar from './CollaborationBar';
 import InlineCommentWidget from './InlineCommentWidget';
+import { useTheme } from '../context/ThemeContext';
 
 const getLanguageFromPath = (path) => {
   if (!path) return 'plaintext';
@@ -63,9 +64,13 @@ const CodeEditor = ({
   // Key that bumps when content must be force-reset (e.g. snapshot restore)
   // Deliberately NOT bumped on auto-save to prevent cursor jumping
   forceContentKey = 0,
+  onLocalChange,
 }) => {
+  const { theme: appTheme } = useTheme();
   const [content, setContent] = useState('');
+  const [prevFileId, setPrevFileId] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDirtyState, setIsDirtyState] = useState(false);
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
   const isRemoteChange = useRef(false);
@@ -73,11 +78,37 @@ const CodeEditor = ({
   const remoteUserColors = useRef({});
   const injectedStyles = useRef({});
   const commentDecorations = useRef([]);
+  const autoSaveTimerRef = useRef(null);
+
+  // Refs to avoid stale closures in event listeners
+  const fileIdRef = useRef(null);
+  const socketRef = useRef(null);
+  const collabSessionRef = useRef(null);
+  const fileRef = useRef(null);
+
+  fileIdRef.current = file?.fileId || file?._id;
+  socketRef.current = socket;
+  collabSessionRef.current = collabSession;
+  fileRef.current = file;
 
   // Inline comment state
   const [fileComments, setFileComments] = useState([]);
   const [commentWidget, setCommentWidget] = useState(null); // { line, position }
   const handleSaveRef = useRef();
+
+  // Handle render-phase state updates when file changes to prevent Monaco value mismatches
+  const currentFileId = file?.fileId || file?._id;
+  if (file && currentFileId !== prevFileId) {
+    setPrevFileId(currentFileId);
+    const initialContent = (codeRef && codeRef.current && codeRef.current[currentFileId] !== undefined)
+      ? codeRef.current[currentFileId]
+      : (file?.content || '');
+    setContent(initialContent);
+    setCommentWidget(null);
+    if (codeRef && currentFileId && codeRef.current[currentFileId] === undefined) {
+      codeRef.current[currentFileId] = initialContent;
+    }
+  }
 
   // Determine language dynamically
   const language = file?.language && file.language !== 'plaintext' ? file.language : getLanguageFromPath(file?.path);
@@ -85,15 +116,50 @@ const CodeEditor = ({
   // Update local content when file identity changes or a forced reset is triggered.
   // Intentionally does NOT watch file?.content to avoid cursor jumping after auto-save.
   useEffect(() => {
-    const initialContent = file?.content || '';
+    const fileId = file?.fileId || file?._id;
+    const initialContent = (codeRef && codeRef.current && codeRef.current[fileId] !== undefined)
+      ? codeRef.current[fileId]
+      : (file?.content || '');
     setContent(initialContent);
+    setIsDirtyState(false);
     setCommentWidget(null); // close any open widget when file changes
+
+    // Cancel any pending auto-save from the previous file
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = null;
+    }
     
     // Ensure codeRef has the latest database content on load
-    if (codeRef && (file?.fileId || file?._id)) {
-      codeRef.current[file.fileId || file._id] = initialContent;
+    if (codeRef && fileId && codeRef.current[fileId] === undefined) {
+      codeRef.current[fileId] = initialContent;
+    }
+
+    // For forced resets (e.g. snapshot restore on the same file path),
+    // explicitly push the new content into the existing Monaco model.
+    if (forceContentKey > 0 && editorRef.current) {
+      editorRef.current.getModel()?.setValue(initialContent);
     }
   }, [file?.fileId, file?._id, forceContentKey, codeRef]);
+
+  // Watch for external content updates to the active file (e.g. from the package manager or full content sync)
+  useEffect(() => {
+    if (!file || !editorRef.current) return;
+    const model = editorRef.current.getModel();
+    if (!model) return;
+    
+    const editorValue = model.getValue();
+    if (editorValue !== file.content) {
+      isRemoteChange.current = true;
+      const currentPosition = editorRef.current.getPosition();
+      model.setValue(file.content || '');
+      if (currentPosition) {
+        editorRef.current.setPosition(currentPosition);
+      }
+      isRemoteChange.current = false;
+      setIsDirtyState(false);
+    }
+  }, [file?.content]);
 
   // Fetch inline comments for this file
   const fetchFileComments = useCallback(async () => {
@@ -107,9 +173,17 @@ const CodeEditor = ({
     }
   }, [file?.fileId, file?._id]);
 
+
   useEffect(() => {
     fetchFileComments();
   }, [fetchFileComments]);
+
+  // Sync Monaco readOnly option dynamically
+  useEffect(() => {
+    if (editorRef.current) {
+      editorRef.current.updateOptions({ readOnly });
+    }
+  }, [readOnly]);
 
   // Update glyph decorations whenever comments change
   useEffect(() => {
@@ -187,10 +261,14 @@ const CodeEditor = ({
 
     // Listen for cursor position changes to broadcast
     editor.onDidChangeCursorPosition((e) => {
-      if (socket && collabSession && e.reason !== 3) { // reason 3 = programmatic
+      const currentSocket = socketRef.current;
+      const currentSession = collabSessionRef.current;
+      const currentFileId = fileIdRef.current;
+      if (currentSocket && currentSession && e.reason !== 3) { // reason 3 = programmatic
         const selection = editor.getSelection();
-        socket.emit('cursor-move', {
-          sessionId: collabSession.sessionId,
+        currentSocket.emit('cursor-move', {
+          sessionId: currentSession.sessionId,
+          fileId: currentFileId,
           position: {
             lineNumber: e.position.lineNumber,
             column: e.position.column,
@@ -207,11 +285,15 @@ const CodeEditor = ({
 
     // Listen for selection changes to broadcast
     editor.onDidChangeCursorSelection((e) => {
-      if (socket && collabSession && e.reason !== 3) {
+      const currentSocket = socketRef.current;
+      const currentSession = collabSessionRef.current;
+      const currentFileId = fileIdRef.current;
+      if (currentSocket && currentSession && e.reason !== 3) {
         const sel = e.selection;
         const hasSelection = sel.startLineNumber !== sel.endLineNumber || sel.startColumn !== sel.endColumn;
-        socket.emit('cursor-move', {
-          sessionId: collabSession.sessionId,
+        currentSocket.emit('cursor-move', {
+          sessionId: currentSession.sessionId,
+          fileId: currentFileId,
           position: {
             lineNumber: sel.positionLineNumber,
             column: sel.positionColumn,
@@ -231,8 +313,16 @@ const CodeEditor = ({
   useEffect(() => {
     if (!socket || !collabSession) return;
 
-    const handleRemoteCodeChange = ({ userId, changes }) => {
+    const handleRemoteCodeChange = ({ userId, fileId, changes }) => {
+      // Update codeRef so Sandbox can access the latest remote changes immediately
+      if (codeRef && fileId) {
+        codeRef.current[fileId] = changes;
+      }
+
       if (!editorRef.current) return;
+
+      const activeFileId = fileIdRef.current;
+      if (fileId !== activeFileId) return;
 
       isRemoteChange.current = true;
       const editor = editorRef.current;
@@ -247,11 +337,7 @@ const CodeEditor = ({
           editor.setPosition(currentPosition);
         }
       }
-      
-      // Update codeRef so Sandbox can access the latest remote changes immediately
-      if (codeRef && (file?.fileId || file?._id)) {
-        codeRef.current[file.fileId || file._id] = changes;
-      }
+      setContent(changes);
 
       // Small delay to allow the editor to sync internal state before clearing flag
       setTimeout(() => {
@@ -259,8 +345,16 @@ const CodeEditor = ({
       }, 50);
     };
 
-    const handleContentSync = ({ content: syncedContent }) => {
+    const handleContentSync = ({ fileId, content: syncedContent }) => {
+      if (codeRef && fileId) {
+        codeRef.current[fileId] = syncedContent;
+      }
+
       if (!editorRef.current) return;
+
+      const activeFileId = fileIdRef.current;
+      if (fileId !== activeFileId) return;
+
       isRemoteChange.current = true;
       const editor = editorRef.current;
       const model = editor.getModel();
@@ -275,17 +369,24 @@ const CodeEditor = ({
         editor.setPosition(currentPosition);
       }
       
-      if (codeRef && (file?.fileId || file?._id)) {
-        codeRef.current[file.fileId || file._id] = syncedContent;
-      }
-      
       isRemoteChange.current = false;
     };
 
-    const handleRemoteCursor = ({ userId, username, position, selection }) => {
+    const handleRemoteCursor = ({ userId, username, fileId, position, selection }) => {
       if (!editorRef.current || !monacoRef.current) return;
 
       const editor = editorRef.current;
+      const activeFileId = fileIdRef.current;
+
+      // If remote user moved their cursor on a different file, clear their cursor on our current active file
+      if (fileId !== activeFileId) {
+        if (remoteCursorDecorations.current[userId]) {
+          editor.deltaDecorations(remoteCursorDecorations.current[userId], []);
+          delete remoteCursorDecorations.current[userId];
+        }
+        return;
+      }
+
       const color = remoteUserColors.current[userId];
       
       // Inject dynamic CSS for this user's color if not done yet
@@ -406,20 +507,39 @@ const CodeEditor = ({
     if (isRemoteChange.current) return;
 
     const newValue = value || '';
-    setContent(newValue);
-    
-    if (codeRef && (file?.fileId || file?._id)) {
-      codeRef.current[file.fileId || file._id] = newValue;
+    // NOTE: We intentionally do NOT call setContent here to avoid re-renders
+    // that would cause @monaco-editor/react to call model.setValue() during
+    // fast typing, resetting the cursor position.
+
+    const currentFileId = fileIdRef.current;
+    if (codeRef && currentFileId) {
+      codeRef.current[currentFileId] = newValue;
+    }
+
+    // Mark file as dirty (only triggers re-render once, React bails out on subsequent calls)
+    setIsDirtyState(true);
+
+    if (onLocalChange && currentFileId) {
+      onLocalChange(currentFileId, newValue);
     }
     
     // If in a collab session, broadcast the change
-    if (socket && collabSession) {
-      socket.emit('code-change', {
-        sessionId: collabSession.sessionId,
+    const currentSocket = socketRef.current;
+    const currentSession = collabSessionRef.current;
+    if (currentSocket && currentSession) {
+      currentSocket.emit('code-change', {
+        sessionId: currentSession.sessionId,
+        fileId: currentFileId,
         changes: newValue,
       });
     }
-  }, [socket, collabSession, file]);
+
+    // Auto-save: debounce 1.5s after last keystroke
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(() => {
+      if (handleSaveRef.current) handleSaveRef.current(true);
+    }, 1500);
+  }, [codeRef, onLocalChange]);
 
   // Scroll to a specific line when scrollToLine changes (from search results)
   useEffect(() => {
@@ -457,21 +577,30 @@ const CodeEditor = ({
     if (readOnly || isSaving) return;
     
     const currentContent = editorRef.current ? editorRef.current.getValue() : content;
-    
+    const currentFileId = fileIdRef.current;
+    const activeFile = fileRef.current;
+    if (!activeFile) return;
+
     // Only save if content has actually changed
-    if (currentContent === file.content) {
+    if (currentContent === activeFile.content) {
       if (!isAutoSave) toast('No changes to save.', { icon: 'ℹ️' });
       return;
     }
 
     if (!isAutoSave) setIsSaving(true);
     try {
-      await onSave(file.fileId || file._id, currentContent, isAutoSave);
+      await onSave(currentFileId, currentContent, isAutoSave);
+
+      // Mark clean after a successful save
+      setIsDirtyState(false);
 
       // Sync content to collaborators after save
-      if (socket && collabSession) {
-        socket.emit('content-sync', {
-          sessionId: collabSession.sessionId,
+      const currentSocket = socketRef.current;
+      const currentSession = collabSessionRef.current;
+      if (currentSocket && currentSession) {
+        currentSocket.emit('content-sync', {
+          sessionId: currentSession.sessionId,
+          fileId: currentFileId,
           content: currentContent,
         });
       }
@@ -481,32 +610,19 @@ const CodeEditor = ({
     } catch (error) {
       if (!isAutoSave) setIsSaving(false);
     }
-  }, [readOnly, isSaving, file, content, onSave, socket, collabSession]);
+  }, [readOnly, isSaving, onSave]);
 
   useEffect(() => {
     handleSaveRef.current = handleSave;
   }, [handleSave]);
 
-  // ─── AUTO-SAVE FUNCTIONALITY ───────────────────────
-  useEffect(() => {
-    // If the file is read-only or there are no unsaved changes, don't do anything
-    if (readOnly || !file || content === file.content) return;
-    
-    // If the change came from a remote user, don't trigger auto-save locally
-    if (isRemoteChange.current) return;
-
-    const timeoutId = setTimeout(() => {
-      // Pass true to indicate this is a silent auto-save
-      handleSave(true);
-    }, 1500); // Wait 1.5 seconds after typing stops
-
-    return () => clearTimeout(timeoutId);
-  }, [content, file, readOnly, handleSave]);
+  // Auto-save is now driven by the timer inside handleContentChange.
+  // No useEffect needed — this prevents the re-render cycle that caused cursor jumps.
 
   if (!file) return null;
 
-  // Simple check for dirtiness (not perfectly robust, but good enough for UI cue)
-  const isDirty = content !== file.content;
+  // isDirty is now driven by isDirtyState, set in handleContentChange and cleared after save.
+  const isDirty = isDirtyState;
 
   return (
     <div className="flex flex-col h-full bg-[#1e1e2e] border border-white/10 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
@@ -568,8 +684,9 @@ const CodeEditor = ({
         <Editor
           height="100%"
           language={language}
-          theme="vs-dark"
-          value={content}
+          theme={appTheme === 'dark' ? 'vs-dark' : 'light'}
+          path={file.path}
+          defaultValue={content}
           onChange={handleContentChange}
           onMount={handleEditorMount}
           options={{

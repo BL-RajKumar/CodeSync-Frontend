@@ -3,14 +3,29 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Loader2, Lock, AlertCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { useAuth } from '../context/AuthContext';
+
+const generateGuestUserId = () => {
+  // Generates a valid 24-character hex string representing a MongoDB ObjectId
+  const timestamp = Math.floor(Date.now() / 1000).toString(16).padStart(8, '0');
+  const machineId = '1234567890ab'.substring(0, 6);
+  const processId = '1234'.substring(0, 4);
+  const increment = Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+  return timestamp + machineId + processId + increment;
+};
 
 const JoinCollab = () => {
   const { sessionId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sessionInfo, setSessionInfo] = useState(null);
   const [needsPassword, setNeedsPassword] = useState(false);
+  const [showGuestForm, setShowGuestForm] = useState(false);
+  
+  const [guestName, setGuestName] = useState('');
   const [password, setPassword] = useState('');
   const [verifying, setVerifying] = useState(false);
 
@@ -25,8 +40,17 @@ const JoinCollab = () => {
         const data = response.data;
         setSessionInfo(data);
 
+        // Prepopulate guest username if they already set it
+        const savedGuestName = sessionStorage.getItem(`collab_guest_name_${sessionId}`);
+        if (savedGuestName) {
+          setGuestName(savedGuestName);
+        }
+
         if (data.isPasswordProtected) {
           setNeedsPassword(true);
+          setLoading(false);
+        } else if (!user) {
+          setShowGuestForm(true);
           setLoading(false);
         } else {
           // Redirect directly to the project editor with session params
@@ -39,26 +63,54 @@ const JoinCollab = () => {
     };
 
     resolveSession();
-  }, [sessionId, navigate]);
+  }, [sessionId, navigate, user]);
 
-  const handlePasswordSubmit = async (e) => {
+  const handleJoinSubmit = async (e) => {
     e.preventDefault();
-    if (!password.trim()) return;
+
+    const isGuest = !user;
+    if (isGuest && !guestName.trim()) {
+      toast.error('Please enter your name');
+      return;
+    }
+
+    if (needsPassword && !password.trim()) {
+      toast.error('Please enter the password');
+      return;
+    }
 
     setVerifying(true);
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      const response = await axios.post(`${apiUrl}/collab/join/${sessionId}/verify`, {
-        password: password.trim(),
-      });
 
-      if (response.data.verified) {
-        // Store password in sessionStorage so the socket can use it
+      if (needsPassword) {
+        const response = await axios.post(`${apiUrl}/collab/join/${sessionId}/verify`, {
+          password: password.trim(),
+        });
+
+        if (!response.data.verified) {
+          toast.error('Incorrect password');
+          setVerifying(false);
+          return;
+        }
+
+        // Store password in sessionStorage so the socket and Axios interceptor can use it
         sessionStorage.setItem(`collab_pw_${sessionId}`, password.trim());
-        navigate(`/p/${sessionInfo.projectId}?session=${sessionInfo.sessionId}&file=${sessionInfo.fileId}`, { replace: true });
       }
+
+      if (isGuest) {
+        // Generate a 24-character hexadecimal guest user ID if not already cached
+        let guestUserId = sessionStorage.getItem(`collab_guest_uid_${sessionId}`);
+        if (!guestUserId) {
+          guestUserId = generateGuestUserId();
+          sessionStorage.setItem(`collab_guest_uid_${sessionId}`, guestUserId);
+        }
+        sessionStorage.setItem(`collab_guest_name_${sessionId}`, guestName.trim());
+      }
+
+      navigate(`/p/${sessionInfo.projectId}?session=${sessionInfo.sessionId}&file=${sessionInfo.fileId}`, { replace: true });
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Incorrect password');
+      toast.error(err.response?.data?.message || 'Verification failed');
     } finally {
       setVerifying(false);
     }
@@ -89,36 +141,64 @@ const JoinCollab = () => {
     );
   }
 
-  if (needsPassword) {
+  if (needsPassword || showGuestForm) {
     return (
       <div className="h-[calc(100vh-73px)] flex items-center justify-center bg-dark text-main">
         <div className="glass-panel p-8 w-full max-w-md animate-fade-in">
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 rounded-full bg-yellow-500/10 flex items-center justify-center">
-              <Lock size={24} className="text-yellow-400" />
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+              {needsPassword ? <Lock size={24} className="text-primary" /> : <AlertCircle size={24} className="text-primary" />}
             </div>
             <div>
-              <h2 className="text-xl font-bold">Password Required</h2>
-              <p className="text-sm text-muted">This session is password protected</p>
+              <h2 className="text-xl font-bold">Join Collaboration</h2>
+              <p className="text-sm text-muted">
+                {needsPassword ? 'Password protection is active' : 'Enter details to join the session'}
+              </p>
             </div>
           </div>
 
-          <form onSubmit={handlePasswordSubmit}>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter session password"
-              autoFocus
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-main mb-4 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all"
-            />
+          <form onSubmit={handleJoinSubmit} className="space-y-4">
+            {!user && (
+              <div>
+                <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-2">
+                  Your Display Name (Guest)
+                </label>
+                <input
+                  type="text"
+                  value={guestName}
+                  onChange={(e) => setGuestName(e.target.value)}
+                  placeholder="Enter your name (e.g. Candidate)"
+                  autoFocus={!needsPassword}
+                  required
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all font-medium"
+                />
+              </div>
+            )}
+
+            {needsPassword && (
+              <div>
+                <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-2">
+                  Session Password
+                </label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter session password"
+                  autoFocus={!!user}
+                  required
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all"
+                />
+              </div>
+            )}
+
             <button
               type="submit"
-              disabled={verifying || !password.trim()}
-              className="w-full py-3 rounded-lg bg-primary text-white font-semibold hover:bg-primary-hover transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              disabled={verifying || (!user && !guestName.trim()) || (needsPassword && !password.trim())}
+              className="w-full py-3 rounded-lg bg-primary text-white font-semibold hover:bg-primary-hover transition-colors disabled:opacity-50 flex items-center justify-center gap-2 mt-6"
             >
               {verifying && <Loader2 size={16} className="animate-spin" />}
-              Join Session
+              Join Collaboration Session
             </button>
           </form>
         </div>

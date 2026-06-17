@@ -59,9 +59,9 @@ const SVGLineChart = ({ data, color, title, gradientId }) => {
             const y = paddingY + ratio * (height - 2 * paddingY);
             const valLabel = Math.round(maxVal * (1 - ratio));
             return (
-              <g key={i} className="opacity-20">
-                <line x1={paddingX} y1={y} x2={width - paddingX} y2={y} stroke="#fff" strokeWidth="1" strokeDasharray="4 4" />
-                <text x={paddingX - 10} y={y + 4} fill="#fff" fontSize="9" textAnchor="end" className="font-mono">{valLabel}</text>
+              <g key={i} className="opacity-40">
+                <line x1={paddingX} y1={y} x2={width - paddingX} y2={y} stroke="var(--color-border)" strokeWidth="1" strokeDasharray="4 4" />
+                <text x={paddingX - 10} y={y + 4} fill="var(--text-muted)" fontSize="9" textAnchor="end" className="font-mono">{valLabel}</text>
               </g>
             );
           })}
@@ -75,18 +75,18 @@ const SVGLineChart = ({ data, color, title, gradientId }) => {
           {/* Sparkline dots */}
           {points.map((p, i) => (
             <g key={i} className="group cursor-pointer">
-              <circle cx={p.x} cy={p.y} r="5" fill="#0b0b14" stroke={color} strokeWidth="2.5" className="transition-transform duration-150 hover:scale-150" />
+              <circle cx={p.x} cy={p.y} r="5" fill="var(--bg-dark)" stroke={color} strokeWidth="2.5" className="transition-transform duration-150 hover:scale-150" />
               
               {/* Tooltip background & text */}
               <g className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none">
-                <rect x={p.x - 24} y={p.y - 28} width="48" height="18" rx="4" fill="#131324" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
-                <text x={p.x} y={p.y - 16} fill="#fff" fontSize="9" fontWeight="bold" textAnchor="middle" className="font-mono">
+                <rect x={p.x - 24} y={p.y - 28} width="48" height="18" rx="4" fill="var(--bg-dark)" stroke="var(--color-border)" strokeWidth="1" />
+                <text x={p.x} y={p.y - 16} fill="var(--text-main)" fontSize="9" fontWeight="bold" textAnchor="middle" className="font-mono">
                   {p.val}
                 </text>
               </g>
 
               {/* Date label at bottom */}
-              <text x={p.x} y={height - paddingY + 20} fill="rgba(255,255,255,0.3)" fontSize="10" textAnchor="middle" className="font-mono">
+              <text x={p.x} y={height - paddingY + 20} fill="var(--text-muted)" fontSize="10" textAnchor="middle" className="font-mono">
                 {p.label}
               </text>
             </g>
@@ -159,7 +159,7 @@ const AdminAnalytics = () => {
             <button
               onClick={() => fetchAnalytics(true)}
               disabled={isRefreshing}
-              className="flex items-center gap-1.5 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-semibold hover:text-white transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+              className="flex items-center gap-1.5 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-semibold hover:text-main transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
             >
               <RefreshCw size={12} className={isRefreshing ? 'animate-spin' : ''} />
               Refresh Metrics
@@ -184,10 +184,10 @@ const AdminAnalytics = () => {
               </div>
             </div>
             <div className="mt-4">
-              <h2 className="text-3xl font-bold font-mono text-white">{users?.total}</h2>
+              <h2 className="text-3xl font-bold font-mono text-main">{users?.total}</h2>
               <div className="flex items-center gap-3 mt-2 text-xs text-muted">
-                <span className="text-emerald-400 font-semibold">{users?.active} Active</span>
-                <span className="text-rose-400 font-semibold">{users?.suspended} Suspended</span>
+                <span className="text-emerald-500 font-semibold">{users?.active} Active</span>
+                <span className="text-rose-500 font-semibold">{users?.suspended} Suspended</span>
               </div>
             </div>
           </div>
@@ -202,11 +202,11 @@ const AdminAnalytics = () => {
               </div>
             </div>
             <div className="mt-4">
-              <h2 className="text-3xl font-bold font-mono text-white">{projects?.total}</h2>
+              <h2 className="text-3xl font-bold font-mono text-main">{projects?.total}</h2>
               <div className="flex items-center gap-3 mt-2 text-xs text-muted">
-                <span className="text-indigo-400 font-semibold">{projects?.public} Public</span>
-                <span className="text-white/40">{projects?.private} Private</span>
-                <span className="text-white/20">· {files?.total} Files</span>
+                <span className="text-indigo-500 font-semibold">{projects?.public} Public</span>
+                <span className="text-muted">{projects?.private} Private</span>
+                <span className="text-muted/60">· {files?.total} Files</span>
               </div>
             </div>
           </div>
@@ -221,13 +221,13 @@ const AdminAnalytics = () => {
               </div>
             </div>
             <div className="mt-4">
-              <h2 className="text-3xl font-bold font-mono text-white">{sessions?.total}</h2>
+              <h2 className="text-3xl font-bold font-mono text-main">{sessions?.total}</h2>
               <div className="flex items-center gap-3 mt-2 text-xs text-muted">
-                <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-emerald-500 font-semibold flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   {sessions?.active} Live Rooms
                 </span>
-                <span className="text-white/30">Total created</span>
+                <span className="text-muted">Total created</span>
               </div>
             </div>
           </div>
@@ -242,10 +242,10 @@ const AdminAnalytics = () => {
               </div>
             </div>
             <div className="mt-4">
-              <h2 className="text-3xl font-bold font-mono text-white">{executions?.total}</h2>
+              <h2 className="text-3xl font-bold font-mono text-main">{executions?.total}</h2>
               <div className="flex items-center gap-3 mt-2 text-xs text-muted">
-                <span className="text-emerald-400 font-semibold">{executions?.successRate}% Success</span>
-                <span className="text-white/40">{executions?.averageTimeMs}ms avg speed</span>
+                <span className="text-emerald-500 font-semibold">{executions?.successRate}% Success</span>
+                <span className="text-muted">{executions?.averageTimeMs}ms avg speed</span>
               </div>
             </div>
           </div>
@@ -290,7 +290,7 @@ const AdminAnalytics = () => {
                   {executions?.languages?.map(lang => (
                     <div key={lang.language} className="space-y-1.5">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="font-mono text-white/80 uppercase font-semibold">{lang.language}</span>
+                        <span className="font-mono text-main/80 uppercase font-semibold">{lang.language}</span>
                         <span className="text-muted font-semibold">{lang.count} execution{lang.count !== 1 ? 's' : ''}</span>
                       </div>
                       <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden">

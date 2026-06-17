@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { Search, UserCheck, UserX, Trash2, ShieldAlert, Loader2, Filter, AlertTriangle, X } from 'lucide-react';
@@ -268,7 +269,7 @@ const AdminManageUsers = () => {
       </div>
 
       {/* Center-Aligned Custom Confirmation Modal */}
-      {deleteTarget && (
+      {deleteTarget && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
           <div className="relative w-full max-w-md bg-[#131324] border border-white/10 rounded-2xl p-6 shadow-2xl space-y-4 animate-scale-up">
             
@@ -323,9 +324,8 @@ const AdminManageUsers = () => {
                 )}
               </button>
             </div>
-
           </div>
-        </div>
+        </div>, document.body
       )}
     </div>
   );
