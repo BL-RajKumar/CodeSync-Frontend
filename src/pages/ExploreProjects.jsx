@@ -48,7 +48,9 @@ const ExploreProjects = () => {
       queryParams.append('limit', 9);
 
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      const response = await fetch(`${apiUrl}/projects/public?${queryParams.toString()}`);
+      const response = await fetch(`${apiUrl}/projects/public?${queryParams.toString()}`, {
+        credentials: 'include',
+      });
       if (!response.ok) {
         throw new Error('Failed to fetch projects');
       }

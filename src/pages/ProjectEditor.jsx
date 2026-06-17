@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
-import { Loader2, FolderTree, Search, Play, History, Brush } from 'lucide-react';
+import { Loader2, FolderTree, Search, Play, History, Brush, Pencil, Check, X as XIcon } from 'lucide-react';
 import FileTree from '../components/FileTree';
 import SearchPanel from '../components/SearchPanel';
 import SandboxPanel from '../components/SandboxPanel';
@@ -33,6 +33,11 @@ const ProjectEditor = () => {
   const [scrollToLine, setScrollToLine] = useState(null);
   const [diffModalState, setDiffModalState] = useState({ isOpen: false, snapshot: null });
 
+  // Inline project meta editing state
+  const [editingMeta, setEditingMeta] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+
   // Collaboration state
   const [collabSession, setCollabSession] = useState(null);
   const [collabParticipants, setCollabParticipants] = useState([]);
@@ -49,6 +54,9 @@ const ProjectEditor = () => {
   const codeRef = useRef({});
   // Ref to prevent auto-rejoining a session we were just kicked from
   const kickedSessionIdRef = useRef(null);
+  
+  const selectedFileRef = useRef(null);
+  selectedFileRef.current = selectedFile;
 
   // Bump this key to force the CodeEditor to reload content (e.g. snapshot restore)
   // Do NOT bump it on auto-save — that would cause cursor jumps.
@@ -194,8 +202,8 @@ const ProjectEditor = () => {
     const handleSessionJoined = (data) => {
       // Robustly resolve the current file ID regardless of object shape
       // (FileTree nodes expose fileId/_id directly; raw DB objects expose _id)
-      const currentFileId = selectedFile
-        ? (selectedFile.fileId || selectedFile._id || selectedFile.originalFile?._id || selectedFile.originalFile?.fileId)
+      const currentFileId = selectedFileRef.current
+        ? (selectedFileRef.current.fileId || selectedFileRef.current._id || selectedFileRef.current.originalFile?._id || selectedFileRef.current.originalFile?.fileId)
         : null;
       const expectedFileId = data.fileId || searchParams.get('file');
 
@@ -212,8 +220,19 @@ const ProjectEditor = () => {
       });
       setCollabParticipants(data.participants || []);
 
-      // Set the live file content from the session
-      if (data.fileContent !== undefined && selectedFile) {
+      // Always update the files array so the collab file has the current live content,
+      // even if selectedFileRef.current is null (race condition where socket fires before
+      // the HTTP file load has selected a file yet).
+      if (data.fileContent !== undefined && data.fileId) {
+        const fileIdStr = data.fileId.toString();
+        setFiles(prev => prev.map(f => {
+          const fid = (f.fileId || f._id || '').toString();
+          return fid === fileIdStr ? { ...f, content: data.fileContent } : f;
+        }));
+      }
+
+      // Also update selectedFile if it is the collab file
+      if (data.fileContent !== undefined && selectedFileRef.current) {
         setSelectedFile(prev => ({ ...prev, content: data.fileContent }));
       }
 
@@ -281,9 +300,10 @@ const ProjectEditor = () => {
         setContentResetKey(k => k + 1);
       } else if (revertedContent !== undefined) {
         setSelectedFile(prev => prev ? { ...prev, content: revertedContent } : null);
-        setFiles(prev => prev.map(f => (f.fileId || f._id) === (selectedFile?.fileId || selectedFile?._id) ? { ...f, content: revertedContent } : f));
-        if (codeRef.current && (selectedFile?.fileId || selectedFile?._id)) {
-          codeRef.current[selectedFile.fileId || selectedFile._id] = revertedContent;
+        const selFid = selectedFileRef.current?.fileId || selectedFileRef.current?._id;
+        setFiles(prev => prev.map(f => (f.fileId || f._id) === selFid ? { ...f, content: revertedContent } : f));
+        if (codeRef.current && selFid) {
+          codeRef.current[selFid] = revertedContent;
         }
         setContentResetKey(k => k + 1);
       }
@@ -341,6 +361,46 @@ const ProjectEditor = () => {
       toast.error(reason || 'You have been disconnected from the session.');
     };
 
+    const handleContentSync = ({ fileId, content }) => {
+      setFiles(prev => prev.map(f => {
+        if ((f.fileId || f._id) === fileId) {
+          return { ...f, content };
+        }
+        return f;
+      }));
+
+      setSelectedFile(prev => {
+        if (prev && (prev.fileId || prev._id) === fileId) {
+          return { ...prev, content };
+        }
+        return prev;
+      });
+
+      if (codeRef.current) {
+        codeRef.current[fileId] = content;
+      }
+    };
+
+    const handleRemoteCodeChange = ({ fileId, changes }) => {
+      setFiles(prev => prev.map(f => {
+        if ((f.fileId || f._id) === fileId) {
+          return { ...f, content: changes };
+        }
+        return f;
+      }));
+
+      setSelectedFile(prev => {
+        if (prev && (prev.fileId || prev._id) === fileId) {
+          return { ...prev, content: changes };
+        }
+        return prev;
+      });
+
+      if (codeRef.current) {
+        codeRef.current[fileId] = changes;
+      }
+    };
+
     socket.on('session-joined', handleSessionJoined);
     socket.on('user-joined', handleUserJoined);
     socket.on('user-left', handleUserLeft);
@@ -348,6 +408,8 @@ const ProjectEditor = () => {
     socket.on('error-message', handleErrorMessage);
     socket.on('participant-kicked', handleParticipantKicked);
     socket.on('force-disconnect', handleForceDisconnect);
+    socket.on('content-sync', handleContentSync);
+    socket.on('code-change', handleRemoteCodeChange);
 
     return () => {
       socket.off('session-joined', handleSessionJoined);
@@ -357,8 +419,10 @@ const ProjectEditor = () => {
       socket.off('error-message', handleErrorMessage);
       socket.off('participant-kicked', handleParticipantKicked);
       socket.off('force-disconnect', handleForceDisconnect);
+      socket.off('content-sync', handleContentSync);
+      socket.off('code-change', handleRemoteCodeChange);
     };
-  }, [socket, selectedFile]);
+  }, [socket]);
 
   // ─── Cleanup: leave session on unmount ──────────────
   // Use a ref to track the current sessionId so we don't trigger cleanup on every render
@@ -549,6 +613,18 @@ const ProjectEditor = () => {
       if ((selectedFile?.fileId || selectedFile?._id) === fileId) {
         setSelectedFile(prev => ({ ...prev, content: newContent }));
       }
+
+      if (codeRef.current) {
+        codeRef.current[fileId] = newContent;
+      }
+
+      if (socket && collabSession) {
+        socket.emit('content-sync', {
+          sessionId: collabSession.sessionId,
+          fileId,
+          content: newContent,
+        });
+      }
       
       if (!isAutoSave) {
         toast.success('File saved');
@@ -561,6 +637,15 @@ const ProjectEditor = () => {
       throw error; // Rethrow to CodeEditor so it stops the saving spinner
     }
   };
+
+  const handleLocalChange = useCallback((fileId, newContent) => {
+    setFiles(prev => prev.map(f => {
+      if ((f.fileId || f._id) === fileId) {
+        return { ...f, content: newContent };
+      }
+      return f;
+    }));
+  }, []);
 
   const handleRenameFolder = async (node, newName, newPath) => {
     try {
@@ -674,6 +759,24 @@ const ProjectEditor = () => {
     }
   };
 
+  const handleSaveMeta = async () => {
+    const trimmedName = editName.trim();
+    if (!trimmedName) { toast.error('Project name cannot be empty'); return; }
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      await axios.patch(`${apiUrl}/projects/${projectId}`, {
+        name: trimmedName,
+        description: editDesc.trim(),
+      }, { withCredentials: true });
+      // Only update name/description to preserve populated ownerId and other fields
+      setProject(prev => ({ ...prev, name: trimmedName, description: editDesc.trim() }));
+      setEditingMeta(false);
+      toast.success('Project updated');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update project');
+    }
+  };
+
   // Show loader while fetching project data OR while waiting for session-joined confirmation
   // The second condition prevents the editor ever flashing as read-only for a joining guest.
   if (loading || waitingForSession) {
@@ -777,10 +880,61 @@ const ProjectEditor = () => {
 
       {/* Sidebar Panel */}
       <div className="w-[280px] shrink-0 border-r border-white/10 flex flex-col bg-[#1e1e2e]">
-        <div className="p-3 border-b border-white/5 font-semibold text-sm truncate opacity-80 uppercase tracking-widest text-primary flex justify-between items-center">
-          <span>{project?.name}</span>
-          {isReadOnly && <span className="bg-white/10 text-[0.6rem] px-2 py-0.5 rounded text-muted">Read Only</span>}
-        </div>
+        {/* Project name header — click pencil to edit (owner only) */}
+        {editingMeta ? (
+          <div className="p-2 border-b border-white/5 flex flex-col gap-1.5">
+            <input
+              autoFocus
+              value={editName}
+              onChange={e => setEditName(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleSaveMeta(); if (e.key === 'Escape') setEditingMeta(false); }}
+              className="w-full bg-white/5 border border-white/10 rounded px-2 py-1 text-sm text-main focus:outline-none focus:border-primary"
+              placeholder="Project name"
+              maxLength={80}
+            />
+            <input
+              value={editDesc}
+              onChange={e => setEditDesc(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleSaveMeta(); if (e.key === 'Escape') setEditingMeta(false); }}
+              className="w-full bg-white/5 border border-white/10 rounded px-2 py-1 text-xs text-muted focus:outline-none focus:border-primary"
+              placeholder="Description (optional)"
+              maxLength={200}
+            />
+            <div className="flex gap-1.5 justify-end mt-0.5">
+              <button
+                onClick={() => setEditingMeta(false)}
+                className="flex items-center gap-1 text-[10px] text-muted hover:text-main px-2 py-0.5 rounded bg-white/5 border border-white/10"
+              >
+                <XIcon size={10} /> Cancel
+              </button>
+              <button
+                onClick={handleSaveMeta}
+                className="flex items-center gap-1 text-[10px] text-emerald-400 hover:text-emerald-300 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20"
+              >
+                <Check size={10} /> Save
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="p-3 border-b border-white/5 flex justify-between items-center group">
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-sm truncate opacity-80 uppercase tracking-widest text-primary">{project?.name}</div>
+              {project?.description && (
+                <div className="text-[10px] text-muted truncate mt-0.5">{project.description}</div>
+              )}
+            </div>
+            {!isReadOnly && (
+              <button
+                onClick={() => { setEditName(project?.name || ''); setEditDesc(project?.description || ''); setEditingMeta(true); }}
+                className="ml-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-white/10 text-muted hover:text-primary"
+                title="Edit project name & description"
+              >
+                <Pencil size={12} />
+              </button>
+            )}
+            {isReadOnly && <span className="bg-white/10 text-[0.6rem] px-2 py-0.5 rounded text-muted">Read Only</span>}
+          </div>
+        )}
         <div className="flex-1 overflow-hidden">
           {sidebarTab === 'files' && (
             <div className="h-full flex flex-col">
@@ -893,6 +1047,7 @@ const ProjectEditor = () => {
                 snapshotId={selectedFile?.snapshotId || null}
                 codeRef={codeRef}
                 forceContentKey={contentResetKey}
+                onLocalChange={handleLocalChange}
               />
             </div>
           ) : (

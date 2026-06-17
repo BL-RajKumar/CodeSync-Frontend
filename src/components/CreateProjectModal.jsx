@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import Input from './Input';
 import Button from './Button';
@@ -34,7 +35,7 @@ const CreateProjectModal = ({ isOpen, onClose, onSubmit, loading }) => {
     onSubmit(formData);
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 w-screen h-screen bg-black/60 backdrop-blur-sm flex items-center justify-center z-[1000] animate-fade-in">
       <div className="w-full max-w-[500px] p-8 glass-panel shadow-[0_20px_60px_rgba(0,0,0,0.5)]">
         <div className="flex justify-between items-center mb-6">
@@ -103,7 +104,8 @@ const CreateProjectModal = ({ isOpen, onClose, onSubmit, loading }) => {
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { 
@@ -22,8 +23,6 @@ const AdminManageLanguages = () => {
   const [formAliases, setFormAliases] = useState('');
   const [formColor, setFormColor] = useState('');
   const [formDescription, setFormDescription] = useState('');
-  const [formDockerImage, setFormDockerImage] = useState('');
-  const [formDockerRunCmd, setFormDockerRunCmd] = useState('');
   const [formIsActive, setFormIsActive] = useState(true);
 
   const fetchLanguages = async () => {
@@ -54,8 +53,6 @@ const AdminManageLanguages = () => {
     setFormAliases('js, jsx');
     setFormColor('#f7df1e');
     setFormDescription('');
-    setFormDockerImage('');
-    setFormDockerRunCmd('');
     setFormIsActive(true);
     setIsModalOpen(true);
   };
@@ -71,8 +68,6 @@ const AdminManageLanguages = () => {
     setFormAliases(lang.aliases ? lang.aliases.join(', ') : '');
     setFormColor(lang.color || '#cccccc');
     setFormDescription(lang.description || '');
-    setFormDockerImage(lang.dockerImage || '');
-    setFormDockerRunCmd(lang.dockerRunCmd || '');
     setFormIsActive(lang.isActive);
     setIsModalOpen(true);
   };
@@ -94,8 +89,6 @@ const AdminManageLanguages = () => {
       aliases: formAliases.split(',').map(s => s.trim()).filter(Boolean),
       color: formColor.trim(),
       description: formDescription.trim(),
-      dockerImage: formDockerImage.trim(),
-      dockerRunCmd: formDockerRunCmd.trim(),
       isActive: formIsActive,
     };
 
@@ -286,9 +279,11 @@ const AdminManageLanguages = () => {
           </div>
         )}
 
-        {/* Create/Edit Glassmorphic Dialog Modal */}
-        {isModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+      </div>
+
+      {/* Create/Edit Glassmorphic Dialog Modal */}
+      {isModalOpen && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
             <div className="bg-[#10101c] border border-white/10 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl animate-scale-up">
               
               {/* Modal Header */}
@@ -304,8 +299,8 @@ const AdminManageLanguages = () => {
                 </button>
               </div>
 
-              {/* Modal Form */}
-              <form onSubmit={handleSave} className="p-6 space-y-4">
+              <form onSubmit={handleSave} className="flex flex-col max-h-[calc(90vh-60px)]">
+                <div className="p-6 space-y-4 overflow-y-auto custom-scrollbar flex-1">
                 
                 {/* ID & Name */}
                 <div className="grid grid-cols-2 gap-4">
@@ -430,29 +425,7 @@ const AdminManageLanguages = () => {
                   />
                 </div>
 
-                {/* Docker Settings */}
-                <div className="grid grid-cols-2 gap-4 border-t border-white/5 pt-4 mt-2">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-muted">Docker Image (Alpine Recommended)</label>
-                    <input 
-                      type="text"
-                      placeholder="e.g. ruby:3.2-alpine"
-                      value={formDockerImage}
-                      onChange={(e) => setFormDockerImage(e.target.value)}
-                      className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4.5 py-2.5 text-sm text-main focus:outline-none focus:border-primary placeholder-white/20"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-muted">Docker Run Command</label>
-                    <input 
-                      type="text"
-                      placeholder="e.g. ruby script.rb"
-                      value={formDockerRunCmd}
-                      onChange={(e) => setFormDockerRunCmd(e.target.value)}
-                      className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4.5 py-2.5 text-sm text-main focus:outline-none focus:border-primary placeholder-white/20"
-                    />
-                  </div>
-                </div>
+
 
                 {/* Active Checkbox */}
                 <div className="flex items-center gap-2 pt-2">
@@ -468,8 +441,10 @@ const AdminManageLanguages = () => {
                   </label>
                 </div>
 
+                </div>
+
                 {/* Actions Button Footer */}
-                <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
+                <div className="flex justify-end gap-3 px-6 py-4 border-t border-white/5 bg-[#10101c] rounded-b-2xl">
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
@@ -489,9 +464,7 @@ const AdminManageLanguages = () => {
               </form>
             </div>
           </div>
-        )}
-
-      </div>
+        , document.body)}
     </div>
   );
 };
