@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
@@ -14,6 +15,7 @@ const Navbar = () => {
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   // Notifications State
   const [notifications, setNotifications] = useState([]);
@@ -165,7 +167,12 @@ const Navbar = () => {
     }
   };
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
+    setIsLogoutModalOpen(true);
+  };
+
+  const confirmLogout = async () => {
+    setIsLogoutModalOpen(false);
     await logout();
     navigate('/login');
   };
@@ -173,9 +180,13 @@ const Navbar = () => {
   return (
     <nav className="sticky top-0 z-50 py-4 mb-8 glass-panel !rounded-none !border-x-0 !border-t-0">
       <div className="container mx-auto px-8 grid grid-cols-[auto_1fr_auto] items-center gap-8">
-        <Link to="/" className="flex items-center gap-3 text-2xl font-bold text-main tracking-tight hover:text-primary transition-colors duration-150">
-          <Code2 className="text-primary" size={28} />
-          <span>CodeSync</span>
+        <Link to="/" className="flex items-center gap-2.5 group">
+          <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-tr from-[#6366f1] to-[#10b981] shadow-[0_4px_12px_rgba(99,102,241,0.25)] group-hover:scale-105 transition-all duration-300">
+            <span className="font-black text-white text-base tracking-tighter select-none">CS</span>
+          </div>
+          <span className="text-2xl font-black bg-gradient-to-r from-[#6366f1] to-[#10b981] bg-clip-text text-transparent tracking-tight hover:brightness-110 transition-all duration-300">
+            CodeSync
+          </span>
         </Link>
         
         <form onSubmit={handleSearch} className="max-w-[400px] w-full">
@@ -293,8 +304,8 @@ const Navbar = () => {
                   {user.avatarUrl ? (
                     <img src={user.avatarUrl} alt="Avatar" className="w-8 h-8 rounded-full object-cover border border-white/10" />
                   ) : (
-                    <div className="w-8 h-8 rounded-full bg-input flex items-center justify-center border border-white/10 text-muted">
-                      <UserIcon size={16} />
+                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center border border-primary/20 text-xs font-bold text-primary shrink-0">
+                      {user.username?.charAt(0).toUpperCase()}
                     </div>
                   )}
                   <span>{user.username}</span>
@@ -312,6 +323,31 @@ const Navbar = () => {
           )}
         </div>
       </div>
+      {isLogoutModalOpen && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="glass-panel p-6 max-w-sm w-full mx-4 shadow-2xl border border-white/10 text-center animate-scale-up animate-sandbox-slide-in">
+            <h3 className="text-xl font-bold text-main mb-2">Confirm Logout</h3>
+            <p className="text-muted text-sm mb-6">Are you sure you want to log out of your session?</p>
+            <div className="flex gap-3 justify-center">
+              <button 
+                type="button"
+                onClick={() => setIsLogoutModalOpen(false)}
+                className="px-4 py-2 rounded-xl font-semibold text-sm bg-white/5 border border-white/10 hover:bg-white/10 text-main transition-colors duration-150"
+              >
+                Cancel
+              </button>
+              <button 
+                type="button"
+                onClick={confirmLogout}
+                className="px-4 py-2 rounded-xl font-semibold text-sm bg-danger hover:bg-red-600 text-white transition-colors duration-150 shadow-[0_4px_12px_rgba(239,68,68,0.2)]"
+              >
+                Log Out
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </nav>
   );
 };

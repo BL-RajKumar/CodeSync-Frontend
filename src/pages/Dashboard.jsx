@@ -5,6 +5,8 @@ import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { Code, Star, GitFork, Trash2 } from 'lucide-react';
 import CreateProjectModal from '../components/CreateProjectModal';
+import { LanguageIcon, getLanguageLabel } from '../components/LanguageIcon';
+
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -107,7 +109,7 @@ const Dashboard = () => {
   return (
     <>
       <div className="container mx-auto px-4 mt-8 animate-fade-in mb-16">
-        <div className="glass-panel bg-gradient-to-br from-primary/5 to-transparent p-12 mb-12">
+        <div className="glass-panel bg-gradient-to-r from-[rgba(0,196,204,0.06)] via-[rgba(125,42,232,0.06)] to-[rgba(226,51,109,0.06)] p-12 mb-12 border-primary/10">
           <h1 className="text-[2.5rem] mb-4 font-bold text-main">
             Welcome back, <span className="text-primary">{user?.username}</span>!
           </h1>
@@ -155,22 +157,25 @@ const Dashboard = () => {
               ) : projects.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {projects.map(project => (
-                    <div key={project.projectId} className="glass-panel p-6 flex flex-col transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5">
+                    <div key={project.projectId} className="glass-panel project-card p-6 flex flex-col hover:-translate-y-1">
                       <div className="flex justify-between items-start mb-4">
                         <h3 className="flex items-center gap-2 text-xl font-semibold text-main">
                           <Code size={18} className="text-muted" /> 
                           {project.name}
                         </h3>
-                        <span className="text-xs bg-white/10 px-2 py-1 rounded-md text-main shrink-0 ml-2">
-                          {project.language}
+                        <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium border border-primary/20 shrink-0 ml-2 inline-flex items-center gap-1.5">
+                          <LanguageIcon language={project.language} className="w-3.5 h-3.5" />
+                          <span>{getLanguageLabel(project.language)}</span>
                         </span>
                       </div>
                       <p className="text-muted text-[0.9rem] mb-6 flex-grow line-clamp-2">
                         {project.description || 'No description provided.'}
                       </p>
                       <div className="flex justify-between items-center mt-auto">
-                        <div className="flex gap-2">
-                          <span className="text-xs px-2 py-1 rounded-md border border-white/10 text-muted">
+                        <div className="flex gap-2 items-center">
+                          <span className={`visibility-chip ${
+                            project.visibility === 'Public' ? 'visibility-chip-public' : 'visibility-chip-private'
+                          }`}>
                             {project.visibility}
                           </span>
                           <button 
@@ -181,7 +186,7 @@ const Dashboard = () => {
                             <Trash2 size={16} />
                           </button>
                         </div>
-                        <Link to={`/p/${project.projectId || project._id}`} className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all duration-150 bg-white/5 text-main border border-white/10 hover:bg-white/10">
+                        <Link to={`/p/${project.projectId || project._id}`} className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all duration-200 bg-white/5 text-main border border-white/10 hover:bg-primary hover:text-white hover:border-primary hover:-translate-y-[1px] hover:shadow-[0_4px_12px_rgba(99,102,241,0.35)]">
                           Open Editor
                         </Link>
                       </div>
@@ -208,14 +213,15 @@ const Dashboard = () => {
                   {starredProjects.map(project => {
                     const pId = project._id || project.projectId;
                     return (
-                    <div key={pId} className="glass-panel p-6 flex flex-col transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5">
+                    <div key={pId} className="glass-panel project-card p-6 flex flex-col hover:-translate-y-1">
                       <div className="flex justify-between items-start mb-4">
                         <Link to={`/p/${pId}`} className="text-main hover:text-primary transition-colors group flex items-center gap-2">
                           <Code size={18} className="text-muted" /> 
                           <h3 className="text-xl font-semibold m-0 group-hover:text-primary transition-colors line-clamp-1">{project.name}</h3>
                         </Link>
-                        <span className="text-xs bg-white/10 px-2 py-1 rounded-md text-main shrink-0 ml-2">
-                          {project.language}
+                        <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium border border-primary/20 shrink-0 ml-2 inline-flex items-center gap-1.5">
+                          <LanguageIcon language={project.language} className="w-3.5 h-3.5" />
+                          <span>{getLanguageLabel(project.language)}</span>
                         </span>
                       </div>
                       <p className="text-muted text-[0.9rem] mb-6 flex-grow line-clamp-2">
