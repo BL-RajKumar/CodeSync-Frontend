@@ -214,7 +214,10 @@ const CodeEditor = ({
         border-left: 2px solid ${color} !important;
       }
       .remote-cursor-line-${userId} {
-        border-left: 2px solid ${color}99;
+        position: absolute;
+        height: 100%;
+        border-left: 2px solid ${color} !important;
+        z-index: 10;
       }
       .remote-cursor-label-${userId} {
         color: ${color};
@@ -479,9 +482,14 @@ const CodeEditor = ({
     };
 
     const handleSessionJoinedEditor = ({ participants, cursorColor }) => {
-      // Store colors for all initial participants from the server
-      // cursorColor is *our* color, but we also need to set up for others
-      // Others' colors arrive via user-joined events
+      if (participants && Array.isArray(participants)) {
+        participants.forEach(p => {
+          if (p.userId && p.cursorColor) {
+            remoteUserColors.current[p.userId] = p.cursorColor;
+            injectCursorStyle(p.userId, p.cursorColor);
+          }
+        });
+      }
     };
 
     socket.on('code-change', handleRemoteCodeChange);
@@ -625,42 +633,44 @@ const CodeEditor = ({
   const isDirty = isDirtyState;
 
   return (
-    <div className="flex flex-col h-full bg-[#1e1e2e] border border-white/10 rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+    <div className="flex flex-col h-full bg-[#1e1e2e] border border-white/10 rounded-xl overflow-hidden">
       {/* Editor Header */}
-      <div className="flex items-center justify-between px-4 py-2 bg-[#181825] border-b border-white/10">
-        <div className="flex items-center gap-2 text-sm text-muted">
-          <span className="text-primary opacity-50">Editing:</span> 
-          <span className="font-mono text-main">{file.path}</span>
-          {isDirty && <span className="w-2 h-2 rounded-full bg-yellow-500 ml-2" title="Unsaved changes"></span>}
+      <div className="flex items-center justify-between px-4 py-2 bg-[#181825] border-b border-white/10 min-w-0">
+        <div className="flex items-center gap-2 text-sm text-muted min-w-0 flex-1">
+          <span className="text-primary opacity-50 flex-shrink-0">Editing:</span> 
+          <span className="font-mono text-main truncate" title={file.path}>{file.path}</span>
+          {isDirty && <span className="w-2 h-2 rounded-full bg-yellow-500 flex-shrink-0 ml-1" title="Unsaved changes"></span>}
         </div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 overflow-x-auto scrollbar-thin flex-shrink-0 max-w-[70%] py-1">
           {/* Collaboration Bar */}
           {!readOnly && (
-            <CollaborationBar
-              session={collabSession}
-              participants={collabParticipants || []}
-              isOwner={isCollabOwner}
-              onEndSession={onEndCollab}
-              onStartSession={onStartCollab}
-              onKickParticipant={onKickParticipant}
-              shareLink={shareLink}
-              isStarting={isStartingCollab}
-            />
+            <div className="flex-shrink-0">
+              <CollaborationBar
+                session={collabSession}
+                participants={collabParticipants || []}
+                isOwner={isCollabOwner}
+                onEndSession={onEndCollab}
+                onStartSession={onStartCollab}
+                onKickParticipant={onKickParticipant}
+                shareLink={shareLink}
+                isStarting={isStartingCollab}
+              />
+            </div>
           )}
 
-          <span className="text-xs font-mono px-2 py-1 bg-white/5 rounded-md uppercase text-muted">
+          <span className="text-xs font-mono px-2 py-1 bg-white/5 rounded-md uppercase text-muted flex-shrink-0">
             {language}
           </span>
           {!readOnly && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0">
               {/* Run in Sandbox shortcut */}
               {onOpenSandbox && (
                 <button
                   id="editor-run-btn"
                   onClick={onOpenSandbox}
                   title="Run in Sandbox (opens runner panel)"
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/50 transition-all duration-150"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/50 transition-all duration-150 flex-shrink-0"
                 >
                   <Play size={13} className="fill-emerald-400" />
                   Run
@@ -669,7 +679,7 @@ const CodeEditor = ({
               <button 
                 onClick={handleSave}
                 disabled={isSaving}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary text-white hover:bg-primary-hover transition-colors disabled:opacity-50"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary text-white hover:bg-primary-hover transition-colors disabled:opacity-50 flex-shrink-0"
               >
                 {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                 Save
@@ -703,6 +713,7 @@ const CodeEditor = ({
             cursorBlinking: 'smooth',
             cursorSmoothCaretAnimation: "on",
             formatOnPaste: true,
+            fixedOverflowWidgets: true,
           }}
           loading={
             <div className="flex items-center justify-center h-full text-muted">

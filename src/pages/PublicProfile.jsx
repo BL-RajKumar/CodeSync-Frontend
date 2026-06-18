@@ -4,6 +4,8 @@ import axios from 'axios';
 import { User as UserIcon, Code, Star, GitFork } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
+import { LanguageIcon, getLanguageLabel } from '../components/LanguageIcon';
+
 
 const PublicProfile = () => {
   const { username } = useParams();
@@ -133,7 +135,10 @@ const PublicProfile = () => {
                       <span className="group-hover:text-primary transition-colors">{project.name}</span>
                     </Link>
                   </h3>
-                  <span className="text-xs bg-white/10 px-2 py-1 rounded-md text-main">{project.language}</span>
+                  <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium border border-primary/20 shrink-0 ml-2 inline-flex items-center gap-1.5">
+                    <LanguageIcon language={project.language} className="w-3.5 h-3.5" />
+                    <span>{getLanguageLabel(project.language)}</span>
+                  </span>
                 </div>
                 <p className="text-muted text-[0.95rem] mb-6 flex-grow">
                   {project.description || 'No description provided.'}

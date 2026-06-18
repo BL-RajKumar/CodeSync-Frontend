@@ -4,6 +4,8 @@ import { Search, Filter, Star, GitFork, Code2, User as UserIcon, Loader2, Chevro
 import toast from 'react-hot-toast';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { LanguageIcon, getLanguageLabel } from '../components/LanguageIcon';
+
 
 const ExploreProjects = () => {
   const [projects, setProjects] = useState([]);
@@ -188,12 +190,15 @@ const ExploreProjects = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {projects.map((project) => (
-            <div key={project.projectId} className="glass-panel flex flex-col p-6 rounded-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_10px_25px_rgba(0,0,0,0.2)]">
+            <div key={project.projectId} className="glass-panel project-card flex flex-col p-6 hover:-translate-y-1">
               <div className="flex justify-between items-start mb-4">
                 <Link to={`/p/${project.projectId}`} className="text-main hover:text-primary transition-colors group">
                   <h3 className="text-xl font-bold break-words m-0 group-hover:text-primary transition-colors">{project.name}</h3>
                 </Link>
-                <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium border border-primary/20 shrink-0 ml-2">{project.language}</span>
+                <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium border border-primary/20 shrink-0 ml-2 inline-flex items-center gap-1.5">
+                  <LanguageIcon language={project.language} className="w-3.5 h-3.5" />
+                  <span>{getLanguageLabel(project.language)}</span>
+                </span>
               </div>
               
               <p className="text-muted text-[0.95rem] leading-relaxed mb-6 flex-1 line-clamp-3">
@@ -206,8 +211,8 @@ const ExploreProjects = () => {
                     {project.ownerId?.avatarUrl ? (
                       <img src={project.ownerId.avatarUrl} alt={project.ownerId.username} className="w-6 h-6 rounded-full object-cover" />
                     ) : (
-                      <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-muted">
-                        <UserIcon size={14} />
+                      <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
+                        {project.ownerId?.username?.charAt(0).toUpperCase()}
                       </div>
                     )}
                     <span>{project.ownerId?.username}</span>
