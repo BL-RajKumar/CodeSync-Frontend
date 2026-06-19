@@ -66,7 +66,7 @@ const CollaborationBar = ({ session, participants, isOwner, onEndSession, onStar
         <button
           onClick={onStartSession}
           disabled={isStarting}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 transition-all duration-150 disabled:opacity-50"
+          className="collab-start-btn flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 transition-all duration-150 disabled:opacity-50"
         >
           {isStarting ? <Loader2 size={14} className="animate-spin" /> : <Users size={14} />}
           Start Collab
