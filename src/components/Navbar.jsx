@@ -180,12 +180,15 @@ const Navbar = () => {
   return (
     <nav className="sticky top-0 z-50 py-2 mb-8 glass-panel !rounded-none !border-x-0 !border-t-0">
       <div className="container mx-auto px-8 grid grid-cols-[auto_1fr_auto] items-center gap-8">
-        <Link to="/" className="flex items-center group">
+        <Link to="/" className="flex items-center gap-3 group">
           <img 
             src="/logo.png" 
             alt="BridgeLabz Logo" 
-            className="h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-[1.03] select-none dark-mode-logo-glow" 
+            className="h-10 w-auto object-contain transition-transform duration-300 group-hover:scale-[1.03] select-none dark-mode-logo-glow" 
           />
+          <span className="text-2xl font-black bg-gradient-to-r from-[#6366f1] to-[#10b981] bg-clip-text text-transparent tracking-tight hover:brightness-110 transition-all duration-300 select-none">
+            CodeSync
+          </span>
         </Link>
         
         <form onSubmit={handleSearch} className="max-w-[400px] w-full">
