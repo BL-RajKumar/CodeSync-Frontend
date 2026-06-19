@@ -670,9 +670,9 @@ const CodeEditor = ({
                   id="editor-run-btn"
                   onClick={onOpenSandbox}
                   title="Run in Sandbox (opens runner panel)"
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/50 transition-all duration-150 flex-shrink-0"
+                  className="run-start-btn flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/50 transition-all duration-150 flex-shrink-0"
                 >
-                  <Play size={13} className="fill-emerald-400" />
+                  <Play size={13} className="fill-emerald-400 play-icon-fill" />
                   Run
                 </button>
               )}

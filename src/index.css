@@ -435,5 +435,39 @@
   scrollbar-width: none;
 }
 
+/* Light theme overrides for Editor action buttons */
+[data-theme="light"] .run-start-btn {
+  background-color: rgba(124, 58, 237, 0.08) !important;
+  border-color: rgba(124, 58, 237, 0.25) !important;
+  color: #7c3aed !important;
+}
 
+[data-theme="light"] .run-start-btn:hover {
+  background-color: rgba(124, 58, 237, 0.15) !important;
+  border-color: rgba(124, 58, 237, 0.45) !important;
+}
+
+[data-theme="light"] .play-icon-fill {
+  fill: #7c3aed !important;
+}
+
+[data-theme="light"] .collab-start-btn {
+  background-color: rgba(124, 58, 237, 0.08) !important;
+  border-color: rgba(124, 58, 237, 0.25) !important;
+  color: #7c3aed !important;
+}
+
+[data-theme="light"] .collab-start-btn:hover {
+  background-color: rgba(124, 58, 237, 0.15) !important;
+  border-color: rgba(124, 58, 237, 0.45) !important;
+}
+
+/* Logo visibility drop-shadow glow in dark mode */
+.dark-mode-logo-glow {
+  filter: drop-shadow(0px 0px 1px rgba(255, 255, 255, 0.7)) drop-shadow(0px 0px 3px rgba(255, 255, 255, 0.5));
+}
+/* In light mode, remove the glow */
+[data-theme="light"] .dark-mode-logo-glow {
+  filter: none;
+}
 
