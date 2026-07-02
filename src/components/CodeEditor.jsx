@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Editor from '@monaco-editor/react';
 import axios from 'axios';
-import { Save, Loader2, Play, MessageSquare } from 'lucide-react';
+import { Save, Loader2, Play, MessageSquare, Clock, CheckCircle2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import CollaborationBar from './CollaborationBar';
 import InlineCommentWidget from './InlineCommentWidget';
@@ -71,8 +71,34 @@ const CodeEditor = ({
   const [prevFileId, setPrevFileId] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isDirtyState, setIsDirtyState] = useState(false);
+  const [lastSavedTime, setLastSavedTime] = useState(() => {
+    const time = file?.updatedAt || file?.createdAt;
+    return time ? new Date(time) : null;
+  });
+  const sessionMountTimeRef = useRef(new Date());
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
+
+  // Coding Duration Timer Effect
+  useEffect(() => {
+    const getStartTime = () => {
+      if (collabSession?.createdAt) {
+        return new Date(collabSession.createdAt);
+      }
+      return sessionMountTimeRef.current;
+    };
+
+    const updateTimer = () => {
+      const startTime = getStartTime();
+      const diffMs = Math.max(0, new Date() - startTime);
+      setElapsedSeconds(Math.floor(diffMs / 1000));
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [collabSession?.createdAt]);
   const isRemoteChange = useRef(false);
   const remoteCursorDecorations = useRef({});
   const remoteUserColors = useRef({});
@@ -90,6 +116,81 @@ const CodeEditor = ({
   socketRef.current = socket;
   collabSessionRef.current = collabSession;
   fileRef.current = file;
+
+  const isCollabOwnerRef = useRef(isCollabOwner);
+  isCollabOwnerRef.current = isCollabOwner;
+  const lastCopiedTextRef = useRef(null);
+
+  useEffect(() => {
+    const handleCopyCut = (e) => {
+      let text = '';
+      if (editorRef.current) {
+        const model = editorRef.current.getModel();
+        const selection = editorRef.current.getSelection();
+        if (model && selection && !selection.isEmpty()) {
+          text = model.getValueInRange(selection);
+        }
+      }
+      if (!text) {
+        text = window.getSelection()?.toString() || '';
+      }
+      if (text) {
+        lastCopiedTextRef.current = text;
+      }
+    };
+
+    const handlePaste = (e) => {
+      if (collabSessionRef.current?.isCopyPasteRestricted && !isCollabOwnerRef.current) {
+        const clipboardData = e.clipboardData || window.clipboardData;
+        const pastedText = clipboardData?.getData('text') || '';
+        
+        const cleanText = (str) => str.replace(/\r\n/g, '\n').trim();
+        const lastCopied = lastCopiedTextRef.current || '';
+        
+        if (cleanText(pastedText) !== cleanText(lastCopied)) {
+          e.preventDefault();
+          e.stopPropagation();
+          toast.error('Copy-pasting from external sources is disabled by the host.', { id: 'paste-blocked-toast' });
+        }
+      }
+    };
+
+    const handleDrop = (e) => {
+      if (collabSessionRef.current?.isCopyPasteRestricted && !isCollabOwnerRef.current) {
+        const text = e.dataTransfer?.getData('text') || '';
+        
+        const cleanText = (str) => str.replace(/\r\n/g, '\n').trim();
+        const lastCopied = lastCopiedTextRef.current || '';
+        
+        if (cleanText(text) !== cleanText(lastCopied)) {
+          e.preventDefault();
+          e.stopPropagation();
+          toast.error('Dragging external text is disabled by the host.', { id: 'drop-blocked-toast' });
+        }
+      }
+    };
+
+    window.addEventListener('copy', handleCopyCut);
+    window.addEventListener('cut', handleCopyCut);
+    window.addEventListener('paste', handlePaste, true);
+    window.addEventListener('drop', handleDrop, true);
+
+    return () => {
+      window.removeEventListener('copy', handleCopyCut);
+      window.removeEventListener('cut', handleCopyCut);
+      window.removeEventListener('paste', handlePaste, true);
+      window.removeEventListener('drop', handleDrop, true);
+    };
+  }, []);
+
+  const handleToggleCopyPaste = useCallback((isCopyPasteRestricted) => {
+    if (socket && collabSession) {
+      socket.emit('toggle-copy-paste-restriction', {
+        sessionId: collabSession.sessionId,
+        isCopyPasteRestricted,
+      });
+    }
+  }, [socket, collabSession]);
 
   // Inline comment state
   const [fileComments, setFileComments] = useState([]);
@@ -122,6 +223,8 @@ const CodeEditor = ({
       : (file?.content || '');
     setContent(initialContent);
     setIsDirtyState(false);
+    const time = file?.updatedAt || file?.createdAt;
+    setLastSavedTime(time ? new Date(time) : null);
     setCommentWidget(null); // close any open widget when file changes
 
     // Cancel any pending auto-save from the previous file
@@ -267,7 +370,7 @@ const CodeEditor = ({
       const currentSocket = socketRef.current;
       const currentSession = collabSessionRef.current;
       const currentFileId = fileIdRef.current;
-      if (currentSocket && currentSession && e.reason !== 3) { // reason 3 = programmatic
+      if (currentSocket && currentSession && !isRemoteChange.current) {
         const selection = editor.getSelection();
         currentSocket.emit('cursor-move', {
           sessionId: currentSession.sessionId,
@@ -291,7 +394,7 @@ const CodeEditor = ({
       const currentSocket = socketRef.current;
       const currentSession = collabSessionRef.current;
       const currentFileId = fileIdRef.current;
-      if (currentSocket && currentSession && e.reason !== 3) {
+      if (currentSocket && currentSession && !isRemoteChange.current) {
         const sel = e.selection;
         const hasSelection = sel.startLineNumber !== sel.endLineNumber || sel.startColumn !== sel.endColumn;
         currentSocket.emit('cursor-move', {
@@ -332,9 +435,17 @@ const CodeEditor = ({
       const model = editor.getModel();
 
       if (model && changes !== undefined) {
-        // Apply the full content from remote
+        // Apply changes via pushEditOperations to preserve cursor decorations
         const currentPosition = editor.getPosition();
-        model.setValue(changes);
+        model.pushEditOperations(
+          [],
+          [{
+            range: model.getFullModelRange(),
+            text: changes,
+            forceMoveMarkers: true,
+          }],
+          () => null
+        );
         // Restore cursor position
         if (currentPosition) {
           editor.setPosition(currentPosition);
@@ -601,6 +712,7 @@ const CodeEditor = ({
 
       // Mark clean after a successful save
       setIsDirtyState(false);
+      setLastSavedTime(new Date());
 
       // Sync content to collaborators after save
       const currentSocket = socketRef.current;
@@ -626,6 +738,19 @@ const CodeEditor = ({
 
   // Auto-save is now driven by the timer inside handleContentChange.
   // No useEffect needed — this prevents the re-render cycle that caused cursor jumps.
+
+  const formatDuration = (totalSeconds) => {
+    const hrs = Math.floor(totalSeconds / 3600);
+    const mins = Math.floor((totalSeconds % 3600) / 60);
+    const secs = totalSeconds % 60;
+    const pad = (num) => String(num).padStart(2, '0');
+    return `${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
+  };
+
+  const formatSavedTime = (date) => {
+    if (!date) return '';
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  };
 
   if (!file) return null;
 
@@ -655,6 +780,7 @@ const CodeEditor = ({
                 onKickParticipant={onKickParticipant}
                 shareLink={shareLink}
                 isStarting={isStartingCollab}
+                onToggleCopyPaste={handleToggleCopyPaste}
               />
             </div>
           )}
@@ -737,6 +863,47 @@ const CodeEditor = ({
             position={commentWidget.position}
           />
         )}
+      </div>
+
+      {/* Premium Status Bar */}
+      <div className="px-4 py-2 bg-[#181825] border-t border-white/10 flex flex-wrap items-center justify-between text-xs text-[#a9b1d6] font-mono select-none gap-4">
+        {/* Left: Session Start Time */}
+        <div className="flex items-center gap-2">
+          <Clock size={14} className="text-primary/70" />
+          <span className="text-white/60">
+            {collabSession ? 'Collab Session' : 'Local Session'} Started:
+          </span>
+          <span className="text-white font-medium">
+            {collabSession?.createdAt 
+              ? new Date(collabSession.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+              : sessionMountTimeRef.current.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+            }
+          </span>
+        </div>
+
+        {/* Center: Live Timer Duration */}
+        <div className="flex items-center gap-2">
+          <span className="text-white/60">Duration:</span>
+          <span className="text-primary font-bold">{formatDuration(elapsedSeconds)}</span>
+        </div>
+
+        {/* Right: Save Status */}
+        <div className="flex items-center gap-2">
+          {isDirty ? (
+            <div className="flex items-center gap-1.5 text-yellow-400">
+              <span className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
+              <span className="font-semibold">Unsaved Changes</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 text-emerald-400">
+              <CheckCircle2 size={13} className="text-emerald-400" />
+              <span>Last Saved:</span>
+              <span className="font-medium text-white/80">
+                {lastSavedTime ? formatSavedTime(lastSavedTime) : 'Never'}
+              </span>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -211,11 +211,18 @@ const ProjectEditor = () => {
       if (currentFileId && expectedFileId && currentFileId.toString() !== expectedFileId.toString()) return;
 
       setCollabSession(prev => {
-        if (prev && prev.sessionId === data.sessionId) return prev;
+        if (prev && prev.sessionId === data.sessionId) {
+          return {
+            ...prev,
+            isCopyPasteRestricted: data.isCopyPasteRestricted || false
+          };
+        }
         return {
           sessionId: data.sessionId,
           ownerId: data.ownerId,
           language: data.language,
+          createdAt: data.createdAt,
+          isCopyPasteRestricted: data.isCopyPasteRestricted || false,
         };
       });
       setCollabParticipants(data.participants || []);
@@ -401,6 +408,21 @@ const ProjectEditor = () => {
       }
     };
 
+    const handleCopyPasteRestrictionUpdated = ({ isCopyPasteRestricted }) => {
+      setCollabSession(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          isCopyPasteRestricted
+        };
+      });
+      if (isCopyPasteRestricted) {
+        toast('Copy-pasting from external sources has been disabled by the host', { icon: '🚫' });
+      } else {
+        toast('Copy-pasting from external sources has been enabled', { icon: '✅' });
+      }
+    };
+
     socket.on('session-joined', handleSessionJoined);
     socket.on('user-joined', handleUserJoined);
     socket.on('user-left', handleUserLeft);
@@ -410,6 +432,7 @@ const ProjectEditor = () => {
     socket.on('force-disconnect', handleForceDisconnect);
     socket.on('content-sync', handleContentSync);
     socket.on('code-change', handleRemoteCodeChange);
+    socket.on('copy-paste-restriction-updated', handleCopyPasteRestrictionUpdated);
 
     return () => {
       socket.off('session-joined', handleSessionJoined);
@@ -421,6 +444,7 @@ const ProjectEditor = () => {
       socket.off('force-disconnect', handleForceDisconnect);
       socket.off('content-sync', handleContentSync);
       socket.off('code-change', handleRemoteCodeChange);
+      socket.off('copy-paste-restriction-updated', handleCopyPasteRestrictionUpdated);
     };
   }, [socket]);
 

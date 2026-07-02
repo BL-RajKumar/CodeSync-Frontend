@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, Link2, X, Share2, Shield, Loader2, UserPlus, Send } from 'lucide-react';
+import { Users, Link2, X, Share2, Shield, Loader2, UserPlus, Send, Clipboard } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import axios from 'axios';
 import UserSearchInput from './UserSearchInput';
@@ -25,7 +25,7 @@ function getAvatarColors(userId) {
   return AVATAR_PALETTES[Math.abs(hash) % AVATAR_PALETTES.length];
 }
 
-const CollaborationBar = ({ session, participants, isOwner, onEndSession, onStartSession, onKickParticipant, shareLink, isStarting }) => {
+const CollaborationBar = ({ session, participants, isOwner, onEndSession, onStartSession, onKickParticipant, shareLink, isStarting, onToggleCopyPaste }) => {
   const [showInviteInput, setShowInviteInput] = useState(false);
   const [inviteUsername, setInviteUsername] = useState('');
   const [isInviting, setIsInviting] = useState(false);
@@ -188,6 +188,29 @@ const CollaborationBar = ({ session, participants, isOwner, onEndSession, onStar
           </button>
         )}
       </div>
+
+      {/* Block Copy-Paste (owner only) */}
+      {isOwner && (
+        <button
+          onClick={() => onToggleCopyPaste(!session.isCopyPasteRestricted)}
+          className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md border transition-all duration-150 ${
+            session.isCopyPasteRestricted
+              ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20'
+              : 'bg-white/5 border-white/10 text-muted hover:bg-white/10 hover:text-main'
+          }`}
+          title={session.isCopyPasteRestricted ? "Allow external copy-pasting" : "Block external copy-pasting"}
+        >
+          {session.isCopyPasteRestricted ? <Shield size={12} /> : <Clipboard size={12} />}
+          <span>{session.isCopyPasteRestricted ? 'Copy/Paste Blocked' : 'Block Copy/Paste'}</span>
+        </button>
+      )}
+
+      {/* Guest Paste Blocked Indicator */}
+      {!isOwner && session.isCopyPasteRestricted && (
+        <div className="flex items-center gap-1 px-2.5 py-1 rounded bg-red-500/10 border border-red-500/20 text-xs font-semibold text-red-400">
+          Copy/Paste Blocked
+        </div>
+      )}
 
       {/* End session (owner only) */}
       {isOwner && (

@@ -47,7 +47,7 @@ const WebPreviewPanel = ({ files, language }) => {
              <div className="flex items-center gap-1">
                <button 
                  onClick={() => setSandpackKey(k => k + 1)}
-                 className="flex items-center gap-1 hover:text-white transition-colors bg-white/5 px-2 py-0.5 rounded border border-white/10"
+                 className="flex items-center gap-1 hover:text-main transition-colors bg-white/5 px-2 py-0.5 rounded border border-white/10"
                  title="Restart Sandbox Container"
                >
                  <RotateCcw size={10} />
@@ -55,7 +55,7 @@ const WebPreviewPanel = ({ files, language }) => {
                </button>
                <button
                  onClick={() => setIsFullscreen(v => !v)}
-                 className="flex items-center gap-1 hover:text-white transition-colors bg-white/5 px-2 py-0.5 rounded border border-white/10"
+                 className="flex items-center gap-1 hover:text-main transition-colors bg-white/5 px-2 py-0.5 rounded border border-white/10"
                  title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen Preview'}
                >
                  {isFullscreen ? <Minimize2 size={10} /> : <Maximize2 size={10} />}
@@ -101,14 +101,30 @@ const WebPreviewPanel = ({ files, language }) => {
         <style>{`
           .custom-wrapper {
             height: 100%;
+            min-width: 0 !important;
+            width: 100% !important;
           }
           .custom-layout {
             height: 100%;
             background: transparent;
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+            min-width: 0 !important;
+            width: 100% !important;
           }
           .custom-console {
             height: 100%;
             background: #151515 !important;
+            min-width: 0 !important;
+            width: 100% !important;
+          }
+          .sp-wrapper, .sp-layout, .sp-preview, .sp-console, .sp-tabs, .sp-navigator, iframe {
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+            min-width: 0 !important;
+            width: 100% !important;
           }
         `}</style>
       </div>
@@ -131,7 +147,7 @@ const WebPreviewPanel = ({ files, language }) => {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setSandpackKey(k => k + 1)}
-                className="flex items-center gap-1.5 text-white/50 hover:text-white transition-colors bg-white/5 px-3 py-1 rounded-lg border border-white/10 text-xs"
+                className="flex items-center gap-1.5 text-white/50 hover:text-main transition-colors bg-white/5 px-3 py-1 rounded-lg border border-white/10 text-xs"
                 title="Restart Sandbox"
               >
                 <RotateCcw size={12} />
@@ -139,7 +155,7 @@ const WebPreviewPanel = ({ files, language }) => {
               </button>
               <button
                 onClick={() => setIsFullscreen(false)}
-                className="flex items-center gap-1.5 text-white/70 hover:text-white transition-colors bg-red-500/10 hover:bg-red-500/20 px-3 py-1 rounded-lg border border-red-500/30 text-xs"
+                className="flex items-center gap-1.5 text-white/70 hover:text-main transition-colors bg-red-500/10 hover:bg-red-500/20 px-3 py-1 rounded-lg border border-red-500/30 text-xs"
                 title="Exit Fullscreen"
               >
                 <X size={12} />
@@ -156,7 +172,7 @@ const WebPreviewPanel = ({ files, language }) => {
               theme="dark"
               files={Object.keys(sandpackFiles).length > 0 ? sandpackFiles : undefined}
             >
-              <SandpackLayout style={{ height: 'calc(100vh - 40px)', '--sp-layout-height': 'calc(100vh - 40px)', background: '#fff', flex: 1 }}>
+              <SandpackLayout style={{ height: 'calc(100vh - 40px)', '--sp-layout-height': 'calc(100vh - 40px)', background: '#181825', flex: 1 }}>
                 <SandpackPreview
                   showNavigator={true}
                   showOpenInCodeSandbox={false}
