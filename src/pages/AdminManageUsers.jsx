@@ -51,7 +51,7 @@ const AdminManageUsers = () => {
       
       // Update local state dynamically
       setUsers((prev) => 
-        prev.map((u) => u.userId === userId ? { ...u, isActive: res.data.user.isActive } : u)
+        prev.map((u) => (u.userId || u._id) === userId ? { ...u, isActive: res.data.user.isActive } : u)
       );
 
       toast.success(res.data.message);
@@ -69,7 +69,7 @@ const AdminManageUsers = () => {
       await axios.delete(`${apiUrl}/admin/users/${deleteTarget.userId}`, { withCredentials: true });
       
       toast.success(`User "${deleteTarget.username}" deleted successfully`);
-      setUsers((prev) => prev.filter((u) => u.userId !== deleteTarget.userId));
+      setUsers((prev) => prev.filter((u) => (u.userId || u._id) !== deleteTarget.userId));
       setDeleteTarget(null);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to delete user');

@@ -453,13 +453,16 @@ const CodeEditor = ({
       }
       setContent(changes);
 
+      // Mark the editor dirty when receiving remote changes
+      setIsDirtyState(true);
+
       // Small delay to allow the editor to sync internal state before clearing flag
       setTimeout(() => {
         isRemoteChange.current = false;
       }, 50);
     };
 
-    const handleContentSync = ({ fileId, content: syncedContent }) => {
+    const handleContentSync = ({ fileId, content: syncedContent, lastSavedAt }) => {
       if (codeRef && fileId) {
         codeRef.current[fileId] = syncedContent;
       }
@@ -484,6 +487,12 @@ const CodeEditor = ({
       }
       
       isRemoteChange.current = false;
+
+      // Update lastSavedTime state and clear dirty state
+      if (lastSavedAt) {
+        setLastSavedTime(new Date(lastSavedAt));
+      }
+      setIsDirtyState(false);
     };
 
     const handleRemoteCursor = ({ userId, username, fileId, position, selection }) => {
@@ -708,11 +717,12 @@ const CodeEditor = ({
 
     if (!isAutoSave) setIsSaving(true);
     try {
-      await onSave(currentFileId, currentContent, isAutoSave);
+      const saveResult = await onSave(currentFileId, currentContent, isAutoSave);
 
       // Mark clean after a successful save
       setIsDirtyState(false);
-      setLastSavedTime(new Date());
+      const savedTime = (saveResult && saveResult.updatedAt) ? new Date(saveResult.updatedAt) : new Date();
+      setLastSavedTime(savedTime);
 
       // Sync content to collaborators after save
       const currentSocket = socketRef.current;
@@ -722,6 +732,7 @@ const CodeEditor = ({
           sessionId: currentSession.sessionId,
           fileId: currentFileId,
           content: currentContent,
+          lastSavedAt: savedTime.toISOString(),
         });
       }
 

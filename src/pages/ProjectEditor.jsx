@@ -368,17 +368,17 @@ const ProjectEditor = () => {
       toast.error(reason || 'You have been disconnected from the session.');
     };
 
-    const handleContentSync = ({ fileId, content }) => {
+    const handleContentSync = ({ fileId, content, lastSavedAt }) => {
       setFiles(prev => prev.map(f => {
         if ((f.fileId || f._id) === fileId) {
-          return { ...f, content };
+          return { ...f, content, updatedAt: lastSavedAt || f.updatedAt };
         }
         return f;
       }));
 
       setSelectedFile(prev => {
         if (prev && (prev.fileId || prev._id) === fileId) {
-          return { ...prev, content };
+          return { ...prev, content, updatedAt: lastSavedAt || prev.updatedAt };
         }
         return prev;
       });
@@ -423,6 +423,54 @@ const ProjectEditor = () => {
       }
     };
 
+    const handleFileCreated = ({ file }) => {
+      setFiles(prev => {
+        const fileId = file.fileId || file._id;
+        if (prev.some(f => (f.fileId || f._id) === fileId)) return prev;
+        return [...prev, file];
+      });
+      toast(`${file.name} created`, { icon: '📄' });
+    };
+
+    const handleFileRenamed = ({ file }) => {
+      const fileId = file.fileId || file._id;
+      setFiles(prev => prev.map(f => (f.fileId || f._id) === fileId ? file : f));
+      setSelectedFile(prev => {
+        if (prev && (prev.fileId || prev._id) === fileId) {
+          return file;
+        }
+        return prev;
+      });
+    };
+
+    const handleFileDeleted = ({ fileId }) => {
+      setFiles(prev => prev.filter(f => (f.fileId || f._id) !== fileId));
+      setSelectedFile(prev => {
+        if (prev && (prev.fileId || prev._id) === fileId) {
+          return null;
+        }
+        return prev;
+      });
+    };
+
+    const handleFolderRenamed = ({ files }) => {
+      setFiles(prev => {
+        const updatedIds = files.map(f => f.fileId || f._id);
+        const otherFiles = prev.filter(f => !updatedIds.includes(f.fileId || f._id));
+        return [...otherFiles, ...files];
+      });
+    };
+
+    const handleFolderDeleted = ({ deletedFileIds }) => {
+      setFiles(prev => prev.filter(f => !deletedFileIds.includes(f.fileId || f._id)));
+      setSelectedFile(prev => {
+        if (prev && deletedFileIds.includes(prev.fileId || prev._id)) {
+          return null;
+        }
+        return prev;
+      });
+    };
+
     socket.on('session-joined', handleSessionJoined);
     socket.on('user-joined', handleUserJoined);
     socket.on('user-left', handleUserLeft);
@@ -433,6 +481,11 @@ const ProjectEditor = () => {
     socket.on('content-sync', handleContentSync);
     socket.on('code-change', handleRemoteCodeChange);
     socket.on('copy-paste-restriction-updated', handleCopyPasteRestrictionUpdated);
+    socket.on('file-created', handleFileCreated);
+    socket.on('file-renamed', handleFileRenamed);
+    socket.on('file-deleted', handleFileDeleted);
+    socket.on('folder-renamed', handleFolderRenamed);
+    socket.on('folder-deleted', handleFolderDeleted);
 
     return () => {
       socket.off('session-joined', handleSessionJoined);
@@ -445,6 +498,11 @@ const ProjectEditor = () => {
       socket.off('content-sync', handleContentSync);
       socket.off('code-change', handleRemoteCodeChange);
       socket.off('copy-paste-restriction-updated', handleCopyPasteRestrictionUpdated);
+      socket.off('file-created', handleFileCreated);
+      socket.off('file-renamed', handleFileRenamed);
+      socket.off('file-deleted', handleFileDeleted);
+      socket.off('folder-renamed', handleFolderRenamed);
+      socket.off('folder-deleted', handleFolderDeleted);
     };
   }, [socket]);
 
@@ -576,6 +634,14 @@ const ProjectEditor = () => {
       
       setFiles(prev => [...prev, response.data]);
       toast.success('File created');
+
+      // Emit file-created to collaborators
+      if (socket && collabSession) {
+        socket.emit('file-created', {
+          sessionId: collabSession.sessionId,
+          file: response.data
+        });
+      }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to create file');
     }
@@ -596,6 +662,14 @@ const ProjectEditor = () => {
       }
       
       toast.success('Renamed successfully');
+
+      // Emit file-renamed to collaborators
+      if (socket && collabSession) {
+        socket.emit('file-renamed', {
+          sessionId: collabSession.sessionId,
+          file: response.data
+        });
+      }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to rename file');
     }
@@ -606,13 +680,22 @@ const ProjectEditor = () => {
     
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      await axios.delete(`${apiUrl}/files/${node.fileId || node.originalFile?._id}`, { withCredentials: true });
+      const targetFileId = node.fileId || node.originalFile?._id;
+      await axios.delete(`${apiUrl}/files/${targetFileId}`, { withCredentials: true });
       
-      setFiles(prev => prev.filter(f => (f.fileId || f._id) !== (node.fileId || node.originalFile?._id)));
-      if ((selectedFile?.fileId || selectedFile?._id) === (node.fileId || node.originalFile?._id)) {
+      setFiles(prev => prev.filter(f => (f.fileId || f._id) !== targetFileId));
+      if ((selectedFile?.fileId || selectedFile?._id) === targetFileId) {
         setSelectedFile(null);
       }
       toast.success('File deleted');
+
+      // Emit file-deleted to collaborators
+      if (socket && collabSession) {
+        socket.emit('file-deleted', {
+          sessionId: collabSession.sessionId,
+          fileId: targetFileId
+        });
+      }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to delete file');
     }
@@ -625,17 +708,19 @@ const ProjectEditor = () => {
         content: newContent
       }, { withCredentials: true });
       
+      const updatedAt = response.data.updatedAt || new Date().toISOString();
+
       // Update local files state with new size/lastEditedBy
       setFiles(prev => prev.map(f => {
         if ((f.fileId || f._id) === fileId) {
-          return { ...f, content: newContent, size: response.data.size };
+          return { ...f, content: newContent, size: response.data.size, updatedAt };
         }
         return f;
       }));
       
       // Update selected file object to drop the dirty state
       if ((selectedFile?.fileId || selectedFile?._id) === fileId) {
-        setSelectedFile(prev => ({ ...prev, content: newContent }));
+        setSelectedFile(prev => ({ ...prev, content: newContent, updatedAt }));
       }
 
       if (codeRef.current) {
@@ -647,12 +732,14 @@ const ProjectEditor = () => {
           sessionId: collabSession.sessionId,
           fileId,
           content: newContent,
+          lastSavedAt: updatedAt,
         });
       }
       
       if (!isAutoSave) {
         toast.success('File saved');
       }
+      return response.data;
     } catch (error) {
       console.error('Save error:', error);
       if (!isAutoSave) {
@@ -687,6 +774,14 @@ const ProjectEditor = () => {
       });
       
       toast.success('Folder renamed');
+
+      // Emit folder-renamed to collaborators
+      if (socket && collabSession) {
+        socket.emit('folder-renamed', {
+          sessionId: collabSession.sessionId,
+          files: response.data.files
+        });
+      }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to rename folder');
     }
@@ -710,6 +805,14 @@ const ProjectEditor = () => {
       }
       
       toast.success('Folder deleted');
+
+      // Emit folder-deleted to collaborators
+      if (socket && collabSession) {
+        socket.emit('folder-deleted', {
+          sessionId: collabSession.sessionId,
+          deletedFileIds: deletedIds
+        });
+      }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to delete folder');
     }
