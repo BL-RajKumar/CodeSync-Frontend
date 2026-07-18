@@ -196,6 +196,7 @@ const CodeEditor = ({
   const [fileComments, setFileComments] = useState([]);
   const [commentWidget, setCommentWidget] = useState(null); // { line, position }
   const handleSaveRef = useRef();
+  const lastSavedContentRef = useRef('');
 
   // Handle render-phase state updates when file changes to prevent Monaco value mismatches
   const currentFileId = file?.fileId || file?._id;
@@ -206,6 +207,7 @@ const CodeEditor = ({
       : (file?.content || '');
     setContent(initialContent);
     setCommentWidget(null);
+    lastSavedContentRef.current = file?.content || '';
     if (codeRef && currentFileId && codeRef.current[currentFileId] === undefined) {
       codeRef.current[currentFileId] = initialContent;
     }
@@ -223,6 +225,7 @@ const CodeEditor = ({
       : (file?.content || '');
     setContent(initialContent);
     setIsDirtyState(false);
+    lastSavedContentRef.current = file?.content || '';
     const time = file?.updatedAt || file?.createdAt;
     setLastSavedTime(time ? new Date(time) : null);
     setCommentWidget(null); // close any open widget when file changes
@@ -252,7 +255,13 @@ const CodeEditor = ({
     if (!model) return;
     
     const editorValue = model.getValue();
-    if (editorValue !== file.content) {
+    const fileId = file.fileId || file._id;
+    const latestLocalContent = (codeRef && codeRef.current) ? codeRef.current[fileId] : null;
+
+    // Only update Monaco if the new file.content doesn't match the current editor value
+    // AND does not match the latest local content in codeRef (meaning it is a genuine
+    // external modification, e.g. from package manager, rather than local/collab typing).
+    if (file.content !== editorValue && (latestLocalContent === null || file.content !== latestLocalContent)) {
       isRemoteChange.current = true;
       const currentPosition = editorRef.current.getPosition();
       model.setValue(file.content || '');
@@ -261,6 +270,7 @@ const CodeEditor = ({
       }
       isRemoteChange.current = false;
       setIsDirtyState(false);
+      lastSavedContentRef.current = file.content || '';
     }
   }, [file?.content]);
 
@@ -493,6 +503,7 @@ const CodeEditor = ({
         setLastSavedTime(new Date(lastSavedAt));
       }
       setIsDirtyState(false);
+      lastSavedContentRef.current = syncedContent || '';
     };
 
     const handleRemoteCursor = ({ userId, username, fileId, position, selection }) => {
@@ -709,9 +720,15 @@ const CodeEditor = ({
     const activeFile = fileRef.current;
     if (!activeFile) return;
 
-    // Only save if content has actually changed
-    if (currentContent === activeFile.content) {
-      if (!isAutoSave) toast('No changes to save.', { icon: 'ℹ️' });
+    // Only save if content has actually changed compared to the last saved database state
+    if (currentContent === lastSavedContentRef.current) {
+      if (!isAutoSave) {
+        setIsSaving(true);
+        setTimeout(() => {
+          setIsSaving(false);
+          toast.success('File saved');
+        }, 300);
+      }
       return;
     }
 
@@ -721,6 +738,7 @@ const CodeEditor = ({
 
       // Mark clean after a successful save
       setIsDirtyState(false);
+      lastSavedContentRef.current = currentContent;
       const savedTime = (saveResult && saveResult.updatedAt) ? new Date(saveResult.updatedAt) : new Date();
       setLastSavedTime(savedTime);
 
@@ -814,7 +832,7 @@ const CodeEditor = ({
                 </button>
               )}
               <button 
-                onClick={handleSave}
+                onClick={() => handleSave(false)}
                 disabled={isSaving}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary text-white hover:bg-primary-hover transition-colors disabled:opacity-50 flex-shrink-0"
               >

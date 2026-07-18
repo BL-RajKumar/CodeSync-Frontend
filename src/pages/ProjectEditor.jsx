@@ -50,6 +50,13 @@ const ProjectEditor = () => {
     return !!params.get('session');
   });
 
+  // Determine if the current user is not the owner (e.g. read-only mode for public viewing)
+  // project.ownerId can be an object (if populated) or string
+  const projectOwnerId = typeof project?.ownerId === 'object' ? project.ownerId._id : project?.ownerId;
+  const currentUserId = user?.userId || user?._id;
+  const isReadOnly = collabSession ? false : (projectOwnerId !== currentUserId);
+  const isWebProject = ['react', 'vanilla-web', 'node-web'].includes(project?.language);
+
   // Ref to hold the absolute latest code for each file (bypassing autosave delays)
   const codeRef = useRef({});
   // Ref to prevent auto-rejoining a session we were just kicked from
@@ -62,7 +69,47 @@ const ProjectEditor = () => {
   // Do NOT bump it on auto-save — that would cause cursor jumps.
   const [contentResetKey, setContentResetKey] = useState(0);
 
-  // Resize State
+  // Sidebar Resizing State & Callbacks
+  const [sidebarWidth, setSidebarWidth] = useState(280);
+  const sidebarWidthRef = useRef(280);
+  useEffect(() => {
+    sidebarWidthRef.current = sidebarWidth;
+  }, [sidebarWidth]);
+
+  const isResizingSidebarRef = useRef(false);
+  const [isResizingSidebar, setIsResizingSidebar] = useState(false);
+
+  const handleSidebarDrag = useCallback((e) => {
+    if (!isResizingSidebarRef.current) return;
+    const leftOffset = isReadOnly ? 0 : 44;
+    let newWidth = e.clientX - leftOffset;
+    
+    if (newWidth < 180) newWidth = 180;
+    if (newWidth > 600) newWidth = 600;
+    
+    setSidebarWidth(newWidth);
+  }, [isReadOnly]);
+
+  const handleSidebarDragEnd = useCallback(() => {
+    isResizingSidebarRef.current = false;
+    setIsResizingSidebar(false);
+    document.removeEventListener('mousemove', handleSidebarDrag);
+    document.removeEventListener('mouseup', handleSidebarDragEnd);
+    document.body.style.userSelect = 'auto';
+    document.body.style.cursor = 'auto';
+  }, [handleSidebarDrag]);
+
+  const handleSidebarDragStart = (e) => {
+    e.preventDefault();
+    isResizingSidebarRef.current = true;
+    setIsResizingSidebar(true);
+    document.addEventListener('mousemove', handleSidebarDrag);
+    document.addEventListener('mouseup', handleSidebarDragEnd);
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'col-resize';
+  };
+
+  // Preview Panel Resize State & Callbacks
   const [previewWidth, setPreviewWidth] = useState(50);
   const [isDragging, setIsDragging] = useState(false);
   const isDraggingRef = useRef(false);
@@ -70,8 +117,8 @@ const ProjectEditor = () => {
   const handleDrag = useCallback((e) => {
     if (!isDraggingRef.current) return;
     const windowWidth = window.innerWidth;
-    const sidebarWidth = 324; // Approximate width of sidebars (44px + 280px)
-    const availableWidth = windowWidth - sidebarWidth;
+    const totalSidebarWidth = (isReadOnly ? 0 : 44) + sidebarWidthRef.current;
+    const availableWidth = windowWidth - totalSidebarWidth;
     
     // e.clientX is absolute. The preview is on the right.
     // So the preview width in pixels is windowWidth - e.clientX
@@ -81,7 +128,7 @@ const ProjectEditor = () => {
     if (newWidth > 85) newWidth = 85;
     
     setPreviewWidth(newWidth);
-  }, []);
+  }, [isReadOnly]);
 
   const handleDragEnd = useCallback(() => {
     isDraggingRef.current = false;
@@ -396,12 +443,9 @@ const ProjectEditor = () => {
         return f;
       }));
 
-      setSelectedFile(prev => {
-        if (prev && (prev.fileId || prev._id) === fileId) {
-          return { ...prev, content: changes };
-        }
-        return prev;
-      });
+      // Do NOT update selectedFile.content here to avoid triggering
+      // rendering and potential rollback conflicts on fast remote typing.
+      // Monaco handles live remote typing updates internally via its socket listener.
 
       if (codeRef.current) {
         codeRef.current[fileId] = changes;
@@ -536,6 +580,12 @@ const ProjectEditor = () => {
       const { sessionId } = response.data;
       setShareLink(`${window.location.origin}/collab/${sessionId}`);
 
+      // Update URL search params so the session persists on page refresh
+      const newParams = new URLSearchParams(searchParams);
+      newParams.set('session', sessionId);
+      newParams.set('file', selectedFile.fileId || selectedFile._id);
+      setSearchParams(newParams, { replace: true });
+
       // Join the session via socket
       if (socket) {
         socket.emit('join-session', { sessionId });
@@ -545,7 +595,7 @@ const ProjectEditor = () => {
     } finally {
       setIsStartingCollab(false);
     }
-  }, [selectedFile, user, projectId, socket]);
+  }, [selectedFile, user, projectId, socket, searchParams, setSearchParams]);
 
   // ─── END COLLABORATION ──────────────────────────────
   const handleEndCollab = useCallback(async (discard = false) => {
@@ -702,6 +752,9 @@ const ProjectEditor = () => {
   };
 
   const handleSaveFileContent = async (fileId, newContent, isAutoSave = false) => {
+    if (codeRef.current) {
+      codeRef.current[fileId] = newContent;
+    }
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
       const response = await axios.put(`${apiUrl}/files/${fileId}/content`, {
@@ -713,18 +766,22 @@ const ProjectEditor = () => {
       // Update local files state with new size/lastEditedBy
       setFiles(prev => prev.map(f => {
         if ((f.fileId || f._id) === fileId) {
-          return { ...f, content: newContent, size: response.data.size, updatedAt };
+          const latestContent = (codeRef.current && codeRef.current[fileId] !== undefined)
+            ? codeRef.current[fileId]
+            : newContent;
+          return { ...f, content: latestContent, size: response.data.size, updatedAt };
         }
         return f;
       }));
       
       // Update selected file object to drop the dirty state
       if ((selectedFile?.fileId || selectedFile?._id) === fileId) {
-        setSelectedFile(prev => ({ ...prev, content: newContent, updatedAt }));
-      }
-
-      if (codeRef.current) {
-        codeRef.current[fileId] = newContent;
+        setSelectedFile(prev => {
+          const latestContent = (codeRef.current && codeRef.current[fileId] !== undefined)
+            ? codeRef.current[fileId]
+            : newContent;
+          return { ...prev, content: latestContent, updatedAt };
+        });
       }
 
       if (socket && collabSession) {
@@ -756,6 +813,12 @@ const ProjectEditor = () => {
       }
       return f;
     }));
+    setSelectedFile(prev => {
+      if (prev && (prev.fileId || prev._id) === fileId) {
+        return { ...prev, content: newContent };
+      }
+      return prev;
+    });
   }, []);
 
   const handleRenameFolder = async (node, newName, newPath) => {
@@ -910,17 +973,16 @@ const ProjectEditor = () => {
     return <div className="h-[calc(100vh-73px)] w-full flex items-center justify-center bg-dark"><Loader2 className="animate-spin text-primary" size={48} /></div>;
   }
 
-  // Determine if the current user is not the owner (e.g. read-only mode for public viewing)
-  // project.ownerId can be an object (if populated) or string
-  const projectOwnerId = typeof project?.ownerId === 'object' ? project.ownerId._id : project?.ownerId;
-  const currentUserId = user?.userId || user?._id;
-  const isReadOnly = collabSession ? false : (projectOwnerId !== currentUserId);
-
-  const isWebProject = ['react', 'vanilla-web', 'node-web'].includes(project?.language);
+  // (Variables moved to top of component to support resizable sidebar handlers)
 
   const handleSearchResultClick = (fileObj, lineNumber) => {
     setSelectedFile(fileObj);
     setScrollToLine(lineNumber);
+    if (collabSession) {
+      const newParams = new URLSearchParams(searchParams);
+      newParams.set('file', fileObj.fileId || fileObj._id);
+      setSearchParams(newParams, { replace: true });
+    }
   };
 
   return (
@@ -1006,7 +1068,7 @@ const ProjectEditor = () => {
       )}
 
       {/* Sidebar Panel */}
-      <div className="w-[280px] shrink-0 border-r border-white/10 flex flex-col bg-[#1e1e2e]">
+      <div style={{ width: `${sidebarWidth}px` }} className="shrink-0 border-r border-white/10 flex flex-col bg-[#1e1e2e]">
         {/* Project name header — click pencil to edit (owner only) */}
         {editingMeta ? (
           <div className="p-2 border-b border-white/5 flex flex-col gap-1.5">
@@ -1074,7 +1136,15 @@ const ProjectEditor = () => {
                   onRenameFolder={isReadOnly ? () => toast.error('Read only') : handleRenameFolder}
                   onDeleteFolder={isReadOnly ? () => toast.error('Read only') : handleDeleteFolder}
                   onMoveNode={isReadOnly ? () => toast.error('Read only') : handleMoveNode}
-                  onFileSelect={(file) => { setSelectedFile(file); setScrollToLine(null); }}
+                  onFileSelect={(file) => {
+                    setSelectedFile(file);
+                    setScrollToLine(null);
+                    if (collabSession) {
+                      const newParams = new URLSearchParams(searchParams);
+                      newParams.set('file', file.fileId || file._id);
+                      setSearchParams(newParams, { replace: true });
+                    }
+                  }}
                 />
               </div>
               {isWebProject && (
@@ -1113,6 +1183,11 @@ const ProjectEditor = () => {
               onFileSelect={(file, line) => {
                 setSelectedFile(file);
                 if (line) setScrollToLine(line);
+                if (collabSession) {
+                  const newParams = new URLSearchParams(searchParams);
+                  newParams.set('file', file.fileId || file._id);
+                  setSearchParams(newParams, { replace: true });
+                }
               }}
             />
           )}
@@ -1133,6 +1208,14 @@ const ProjectEditor = () => {
           )}
         </div>
       </div>
+
+      {/* Sidebar Resizer */}
+      <div
+        onMouseDown={handleSidebarDragStart}
+        className={`w-[4px] hover:w-[6px] active:w-[6px] cursor-col-resize shrink-0 transition-all duration-150 z-30 select-none h-full border-r border-white/5 hover:border-primary/50 active:border-primary ${
+          isResizingSidebar ? 'bg-primary border-primary' : 'bg-transparent hover:bg-primary/20 active:bg-primary/40'
+        }`}
+      />
       
       {/* Main Editor Area */}
       <div className="flex-1 flex bg-[#181825] overflow-hidden">
