@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Package, Plus, Trash2, Box } from 'lucide-react';
-import { toast } from 'react-hot-toast';
+import { toast } from 'react-toastify';
 
 const PackageManager = ({ files, onSaveFile, isReadOnly }) => {
   const [newPackage, setNewPackage] = useState('');

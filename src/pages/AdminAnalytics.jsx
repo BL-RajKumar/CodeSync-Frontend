@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { toast } from 'react-hot-toast';
+import { toast } from 'react-toastify';
 import { 
   ShieldAlert, Loader2, Users, Folder, 
   Terminal, Activity, TrendingUp, Cpu, 
@@ -75,10 +75,22 @@ const SVGLineChart = ({ data, color, title, gradientId }) => {
           {/* Sparkline dots */}
           {points.map((p, i) => (
             <g key={i} className="group cursor-pointer">
-              <circle cx={p.x} cy={p.y} r="5" fill="var(--bg-dark)" stroke={color} strokeWidth="2.5" className="transition-transform duration-150 hover:scale-150" />
+              {/* Invisible fixed hit target prevents mouse-leave jitter */}
+              <circle cx={p.x} cy={p.y} r="18" fill="transparent" />
+
+              {/* Visible dot with radius transition */}
+              <circle 
+                cx={p.x} 
+                cy={p.y} 
+                r="5" 
+                fill="var(--bg-dark)" 
+                stroke={color} 
+                strokeWidth="2.5" 
+                className="transition-all duration-200 group-hover:r-7 group-hover:stroke-[3.5]" 
+              />
               
               {/* Tooltip background & text */}
-              <g className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none">
+              <g className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
                 <rect x={p.x - 24} y={p.y - 28} width="48" height="18" rx="4" fill="var(--bg-dark)" stroke="var(--color-border)" strokeWidth="1" />
                 <text x={p.x} y={p.y - 16} fill="var(--text-main)" fontSize="9" fontWeight="bold" textAnchor="middle" className="font-mono">
                   {p.val}
@@ -132,17 +144,9 @@ const AdminAnalytics = () => {
 
   const { users, projects, files, sessions, executions } = data || {};
 
-  const maxLanguageCount = executions?.languages?.length > 0
-    ? Math.max(...executions.languages.map(l => l.count))
-    : 1;
-
-  const maxStatusCount = executions?.statuses?.length > 0
-    ? Math.max(...executions.statuses.map(s => s.count))
-    : 1;
-
   return (
-    <div className="w-full text-main font-sans p-6 md:p-10 h-full overflow-y-auto">
-      <div className="max-w-7xl mx-auto space-y-8 animate-fade-in">
+    <div className="w-full text-main font-sans p-6 md:p-8 h-full overflow-y-auto">
+      <div className="w-full space-y-8 animate-fade-in">
         
         {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-6">
@@ -271,77 +275,6 @@ const AdminAnalytics = () => {
               gradientId="executionTimelineGrad" 
             />
           )}
-        </div>
-
-        {/* Detailed Stats Breakdown */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          
-          {/* Languages Breakdown */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-lg shadow-xl flex flex-col justify-between min-h-[300px]">
-            <div>
-              <h3 className="text-sm font-bold text-muted uppercase tracking-wider mb-6 flex items-center gap-1.5 border-b border-white/5 pb-3">
-                <Cpu size={16} className="text-primary" />
-                Language Execution Share
-              </h3>
-              {executions?.languages?.length === 0 ? (
-                <div className="text-center py-12 text-xs text-muted">No language execution data yet</div>
-              ) : (
-                <div className="space-y-4 max-h-[220px] overflow-y-auto pr-2">
-                  {executions?.languages?.map(lang => (
-                    <div key={lang.language} className="space-y-1.5">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-mono text-main/80 uppercase font-semibold">{lang.language}</span>
-                        <span className="text-muted font-semibold">{lang.count} execution{lang.count !== 1 ? 's' : ''}</span>
-                      </div>
-                      <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden">
-                        <div 
-                          className="bg-primary h-full rounded-full transition-all duration-500" 
-                          style={{ width: `${(lang.count / maxLanguageCount) * 100}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Execution Status Breakdown */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-lg shadow-xl flex flex-col justify-between min-h-[300px]">
-            <div>
-              <h3 className="text-sm font-bold text-muted uppercase tracking-wider mb-6 flex items-center gap-1.5 border-b border-white/5 pb-3">
-                <Layers size={16} className="text-indigo-400" />
-                Execution Status Distribution
-              </h3>
-              {executions?.statuses?.length === 0 ? (
-                <div className="text-center py-12 text-xs text-muted">No execution status data yet</div>
-              ) : (
-                <div className="space-y-4 max-h-[220px] overflow-y-auto pr-2">
-                  {executions?.statuses?.map(stat => {
-                    const isAccepted = stat.status === 'Accepted';
-                    return (
-                      <div key={stat.status} className="space-y-1.5">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className={`flex items-center gap-1 font-semibold ${isAccepted ? 'text-emerald-400' : 'text-rose-400/80'}`}>
-                            {isAccepted ? <CheckCircle2 size={12} /> : <AlertOctagon size={12} />}
-                            {stat.status}
-                          </span>
-                          <span className="text-muted font-semibold">{stat.count} match{stat.count !== 1 ? 'es' : ''}</span>
-                        </div>
-                        <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden">
-                          <div 
-                            className={`h-full rounded-full transition-all duration-500 ${isAccepted ? 'bg-emerald-500' : 'bg-rose-500/70'}`} 
-                            style={{ width: `${(stat.count / maxStatusCount) * 100}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-
         </div>
 
       </div>

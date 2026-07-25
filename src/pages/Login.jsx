@@ -3,11 +3,11 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Input from '../components/Input';
 import Button from '../components/Button';
-import { Mail, Lock } from 'lucide-react';
-import { toast } from 'react-hot-toast';
+import { User, Lock } from 'lucide-react';
+import { toast } from 'react-toastify';
 
 const Login = () => {
-  const [email, setEmail] = useState('');
+  const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
@@ -26,7 +26,7 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    const success = await login(email, password);
+    const success = await login(loginId, password);
     setLoading(false);
     if (success) {
       navigate('/dashboard');
@@ -48,11 +48,11 @@ const Login = () => {
 
         <form onSubmit={handleSubmit} className="mb-6">
           <Input
-            type="email"
-            placeholder="Email Address"
-            icon={Mail}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            type="text"
+            placeholder="Username or Email Address"
+            icon={User}
+            value={loginId}
+            onChange={(e) => setLoginId(e.target.value)}
             required
           />
           <Input
@@ -63,6 +63,15 @@ const Login = () => {
             onChange={(e) => setPassword(e.target.value)}
             required
           />
+
+          <div className="flex justify-end -mt-2 mb-6">
+            <Link 
+              to="/forgot-password" 
+              className="text-xs text-muted hover:text-primary transition-colors font-medium"
+            >
+              Forgot password?
+            </Link>
+          </div>
 
           <Button type="submit" fullWidth disabled={loading}>
             {loading ? 'Logging in...' : 'Login'}

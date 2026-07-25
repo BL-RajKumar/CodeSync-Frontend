@@ -462,12 +462,14 @@
   border-color: rgba(124, 58, 237, 0.45) !important;
 }
 
-/* Logo visibility drop-shadow glow in dark mode */
-.dark-mode-logo-glow {
-  filter: drop-shadow(0px 0px 1px rgba(255, 255, 255, 0.7)) drop-shadow(0px 0px 3px rgba(255, 255, 255, 0.5));
+/* Make ONLY the text portion of the logo pure white in dark mode */
+.logo-text-outline {
+  filter: brightness(0) invert(1);
 }
-/* In light mode, remove the glow */
-[data-theme="light"] .dark-mode-logo-glow {
+
+[data-theme="light"] .logo-text-outline {
   filter: none;
 }
+
+
 

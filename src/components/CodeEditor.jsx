@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Editor from '@monaco-editor/react';
 import axios from 'axios';
 import { Save, Loader2, Play, MessageSquare, Clock, CheckCircle2 } from 'lucide-react';
-import { toast } from 'react-hot-toast';
+import { toast } from 'react-toastify';
 import CollaborationBar from './CollaborationBar';
 import InlineCommentWidget from './InlineCommentWidget';
 import { useTheme } from '../context/ThemeContext';
@@ -39,6 +39,12 @@ const getLanguageFromPath = (path) => {
   }
 };
 
+const getFileSavedTime = (f) => {
+  if (!f) return null;
+  const time = f.updatedAt || f.createdAt || f.updated_at || f.created_at || f.lastSavedAt;
+  return time ? new Date(time) : null;
+};
+
 const CodeEditor = ({ 
   file, 
   onSave, 
@@ -71,10 +77,7 @@ const CodeEditor = ({
   const [prevFileId, setPrevFileId] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isDirtyState, setIsDirtyState] = useState(false);
-  const [lastSavedTime, setLastSavedTime] = useState(() => {
-    const time = file?.updatedAt || file?.createdAt;
-    return time ? new Date(time) : null;
-  });
+  const [lastSavedTime, setLastSavedTime] = useState(() => getFileSavedTime(file));
   const sessionMountTimeRef = useRef(new Date());
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const editorRef = useRef(null);
@@ -196,6 +199,7 @@ const CodeEditor = ({
   const [fileComments, setFileComments] = useState([]);
   const [commentWidget, setCommentWidget] = useState(null); // { line, position }
   const handleSaveRef = useRef();
+  const lastSavedContentRef = useRef('');
 
   // Handle render-phase state updates when file changes to prevent Monaco value mismatches
   const currentFileId = file?.fileId || file?._id;
@@ -206,6 +210,8 @@ const CodeEditor = ({
       : (file?.content || '');
     setContent(initialContent);
     setCommentWidget(null);
+    lastSavedContentRef.current = file?.content || '';
+    setLastSavedTime(getFileSavedTime(file));
     if (codeRef && currentFileId && codeRef.current[currentFileId] === undefined) {
       codeRef.current[currentFileId] = initialContent;
     }
@@ -223,8 +229,8 @@ const CodeEditor = ({
       : (file?.content || '');
     setContent(initialContent);
     setIsDirtyState(false);
-    const time = file?.updatedAt || file?.createdAt;
-    setLastSavedTime(time ? new Date(time) : null);
+    lastSavedContentRef.current = file?.content || '';
+    setLastSavedTime(getFileSavedTime(file));
     setCommentWidget(null); // close any open widget when file changes
 
     // Cancel any pending auto-save from the previous file
@@ -243,7 +249,7 @@ const CodeEditor = ({
     if (forceContentKey > 0 && editorRef.current) {
       editorRef.current.getModel()?.setValue(initialContent);
     }
-  }, [file?.fileId, file?._id, forceContentKey, codeRef]);
+  }, [file?.fileId, file?._id, file?.updatedAt, file?.createdAt, forceContentKey, codeRef]);
 
   // Watch for external content updates to the active file (e.g. from the package manager or full content sync)
   useEffect(() => {
@@ -252,7 +258,13 @@ const CodeEditor = ({
     if (!model) return;
     
     const editorValue = model.getValue();
-    if (editorValue !== file.content) {
+    const fileId = file.fileId || file._id;
+    const latestLocalContent = (codeRef && codeRef.current) ? codeRef.current[fileId] : null;
+
+    // Only update Monaco if the new file.content doesn't match the current editor value
+    // AND does not match the latest local content in codeRef (meaning it is a genuine
+    // external modification, e.g. from package manager, rather than local/collab typing).
+    if (file.content !== editorValue && (latestLocalContent === null || file.content !== latestLocalContent)) {
       isRemoteChange.current = true;
       const currentPosition = editorRef.current.getPosition();
       model.setValue(file.content || '');
@@ -261,6 +273,7 @@ const CodeEditor = ({
       }
       isRemoteChange.current = false;
       setIsDirtyState(false);
+      lastSavedContentRef.current = file.content || '';
     }
   }, [file?.content]);
 
@@ -453,13 +466,16 @@ const CodeEditor = ({
       }
       setContent(changes);
 
+      // Mark the editor dirty when receiving remote changes
+      setIsDirtyState(true);
+
       // Small delay to allow the editor to sync internal state before clearing flag
       setTimeout(() => {
         isRemoteChange.current = false;
       }, 50);
     };
 
-    const handleContentSync = ({ fileId, content: syncedContent }) => {
+    const handleContentSync = ({ fileId, content: syncedContent, lastSavedAt }) => {
       if (codeRef && fileId) {
         codeRef.current[fileId] = syncedContent;
       }
@@ -484,6 +500,13 @@ const CodeEditor = ({
       }
       
       isRemoteChange.current = false;
+
+      // Update lastSavedTime state and clear dirty state
+      if (lastSavedAt) {
+        setLastSavedTime(new Date(lastSavedAt));
+      }
+      setIsDirtyState(false);
+      lastSavedContentRef.current = syncedContent || '';
     };
 
     const handleRemoteCursor = ({ userId, username, fileId, position, selection }) => {
@@ -700,19 +723,27 @@ const CodeEditor = ({
     const activeFile = fileRef.current;
     if (!activeFile) return;
 
-    // Only save if content has actually changed
-    if (currentContent === activeFile.content) {
-      if (!isAutoSave) toast('No changes to save.', { icon: 'ℹ️' });
+    // Only save if content has actually changed compared to the last saved database state
+    if (currentContent === lastSavedContentRef.current) {
+      if (!isAutoSave) {
+        setIsSaving(true);
+        setTimeout(() => {
+          setIsSaving(false);
+          toast.success('File saved');
+        }, 300);
+      }
       return;
     }
 
     if (!isAutoSave) setIsSaving(true);
     try {
-      await onSave(currentFileId, currentContent, isAutoSave);
+      const saveResult = await onSave(currentFileId, currentContent, isAutoSave);
 
       // Mark clean after a successful save
       setIsDirtyState(false);
-      setLastSavedTime(new Date());
+      lastSavedContentRef.current = currentContent;
+      const savedTime = (saveResult && saveResult.updatedAt) ? new Date(saveResult.updatedAt) : new Date();
+      setLastSavedTime(savedTime);
 
       // Sync content to collaborators after save
       const currentSocket = socketRef.current;
@@ -722,6 +753,7 @@ const CodeEditor = ({
           sessionId: currentSession.sessionId,
           fileId: currentFileId,
           content: currentContent,
+          lastSavedAt: savedTime.toISOString(),
         });
       }
 
@@ -749,13 +781,22 @@ const CodeEditor = ({
 
   const formatSavedTime = (date) => {
     if (!date) return '';
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleTimeString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true,
+    });
   };
 
   if (!file) return null;
 
   // isDirty is now driven by isDirtyState, set in handleContentChange and cleared after save.
   const isDirty = isDirtyState;
+  const effectiveSavedTime = lastSavedTime || getFileSavedTime(file) || sessionMountTimeRef.current;
 
   return (
     <div className="flex flex-col h-full bg-[#1e1e2e] border border-white/10 rounded-xl overflow-hidden">
@@ -803,7 +844,7 @@ const CodeEditor = ({
                 </button>
               )}
               <button 
-                onClick={handleSave}
+                onClick={() => handleSave(false)}
                 disabled={isSaving}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary text-white hover:bg-primary-hover transition-colors disabled:opacity-50 flex-shrink-0"
               >
@@ -868,16 +909,13 @@ const CodeEditor = ({
       {/* Premium Status Bar */}
       <div className="px-4 py-2 bg-[#181825] border-t border-white/10 flex flex-wrap items-center justify-between text-xs text-[#a9b1d6] font-mono select-none gap-4">
         {/* Left: Session Start Time */}
-        <div className="flex items-center gap-2">
-          <Clock size={14} className="text-primary/70" />
-          <span className="text-white/60">
+        <div className="flex items-center gap-2 text-muted">
+          <Clock size={14} />
+          <span>
             {collabSession ? 'Collab Session' : 'Local Session'} Started:
           </span>
-          <span className="text-white font-medium">
-            {collabSession?.createdAt 
-              ? new Date(collabSession.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-              : sessionMountTimeRef.current.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-            }
+          <span>
+            {formatSavedTime(collabSession?.createdAt || sessionMountTimeRef.current)}
           </span>
         </div>
 
@@ -899,7 +937,7 @@ const CodeEditor = ({
               <CheckCircle2 size={13} className="text-emerald-400" />
               <span>Last Saved:</span>
               <span className="font-medium text-white/80">
-                {lastSavedTime ? formatSavedTime(lastSavedTime) : 'Never'}
+                {formatSavedTime(effectiveSavedTime)}
               </span>
             </div>
           )}

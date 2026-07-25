@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { toast } from 'react-hot-toast';
+import { toast } from 'react-toastify';
 import { MessageSquare, CheckCircle, Circle, Loader2, ChevronDown, ChevronRight, FileCode } from 'lucide-react';
 import { CommentItem } from './InlineCommentWidget';
 

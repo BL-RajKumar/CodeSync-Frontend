@@ -1,12 +1,15 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import { ThemeProvider } from './context/ThemeContext';
 import Navbar from './components/Navbar';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import Profile from './pages/Profile';
 import Dashboard from './pages/Dashboard';
 import SearchUsers from './pages/SearchUsers';
@@ -70,6 +73,18 @@ const AppContent = () => {
             <Register />
           </GuestRoute>
         } />
+
+        <Route path="/forgot-password" element={
+          <GuestRoute>
+            <ForgotPassword />
+          </GuestRoute>
+        } />
+
+        <Route path="/reset-password/:resetToken" element={
+          <GuestRoute>
+            <ResetPassword />
+          </GuestRoute>
+        } />
         
         <Route path="/dashboard" element={
           <ProtectedRoute>
@@ -94,7 +109,11 @@ const AppContent = () => {
         </Route>
 
         {/* Public Routes for UC3 & UC5 */}
-        <Route path="/search" element={<SearchUsers />} />
+        <Route path="/search" element={
+          <ProtectedRoute>
+            <SearchUsers />
+          </ProtectedRoute>
+        } />
         <Route path="/explore" element={<ExploreProjects />} />
         <Route path="/u/:username" element={<PublicProfile />} />
         
@@ -114,20 +133,18 @@ function App() {
       <AuthProvider>
         <Router>
           <SocketProvider>
-            <Toaster position="top-right" toastOptions={{
-              style: {
-                background: '#1a1d24',
-                color: '#f8f9fa',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-              },
-              success: {
-                iconTheme: { primary: '#10b981', secondary: '#1a1d24' }
-              },
-              error: {
-                iconTheme: { primary: '#ef4444', secondary: '#1a1d24' }
-              }
-            }} />
+            <ToastContainer 
+              position="bottom-center"
+              autoClose={3000}
+              hideProgressBar={false}
+              newestOnTop={false}
+              closeOnClick
+              rtl={false}
+              pauseOnFocusLoss
+              draggable
+              pauseOnHover
+              theme="dark"
+            />
             <AppContent />
           </SocketProvider>
         </Router>

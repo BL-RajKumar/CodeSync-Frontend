@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
-import { toast } from 'react-hot-toast';
-import { Loader2, FolderTree, Search, Play, History, Brush, Pencil, Check, X as XIcon } from 'lucide-react';
+import { toast } from 'react-toastify';
+import { Loader2, FolderTree, Search, Play, History, Brush, Pencil, Check, X as XIcon, Calendar } from 'lucide-react';
 import FileTree from '../components/FileTree';
 import SearchPanel from '../components/SearchPanel';
 import SandboxPanel from '../components/SandboxPanel';
@@ -14,7 +14,8 @@ import PackageManager from '../components/PackageManager';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import ProjectCommentsPanel from '../components/ProjectCommentsPanel';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, MessageCircle } from 'lucide-react';
+import ChatPanel from '../components/ChatPanel';
 
 const WhiteboardPanel = React.lazy(() => import('../components/WhiteboardPanel'));
 
@@ -33,6 +34,20 @@ const ProjectEditor = () => {
   const [scrollToLine, setScrollToLine] = useState(null);
   const [diffModalState, setDiffModalState] = useState({ isOpen: false, snapshot: null });
 
+  // Chat & Notes state
+  const [messages, setMessages] = useState([]);
+  const [privateNotes, setPrivateNotes] = useState('');
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
+  const [lastSession, setLastSession] = useState(null);
+
+  const sidebarTabRef = useRef(sidebarTab);
+  useEffect(() => {
+    sidebarTabRef.current = sidebarTab;
+    if (sidebarTab === 'chat') {
+      setUnreadChatCount(0);
+    }
+  }, [sidebarTab]);
+
   // Inline project meta editing state
   const [editingMeta, setEditingMeta] = useState(false);
   const [editName, setEditName] = useState('');
@@ -50,6 +65,16 @@ const ProjectEditor = () => {
     return !!params.get('session');
   });
 
+  // Determine if the current user is not the owner (e.g. read-only mode for public viewing)
+  // project.ownerId can be an object (if populated) or string
+  const projectOwnerId = typeof project?.ownerId === 'object' ? project.ownerId._id : project?.ownerId;
+  const sessionParam = searchParams.get('session');
+  const currentUserId = user?.userId || user?._id || (sessionParam ? sessionStorage.getItem(`collab_guest_uid_${sessionParam}`) : null);
+  const currentUsername = user?.username || (sessionParam ? sessionStorage.getItem(`collab_guest_name_${sessionParam}`) : 'Guest');
+  const isReadOnly = collabSession ? false : (projectOwnerId !== currentUserId);
+
+  const isWebProject = ['react', 'vanilla-web', 'node-web'].includes(project?.language);
+
   // Ref to hold the absolute latest code for each file (bypassing autosave delays)
   const codeRef = useRef({});
   // Ref to prevent auto-rejoining a session we were just kicked from
@@ -62,7 +87,47 @@ const ProjectEditor = () => {
   // Do NOT bump it on auto-save — that would cause cursor jumps.
   const [contentResetKey, setContentResetKey] = useState(0);
 
-  // Resize State
+  // Sidebar Resizing State & Callbacks
+  const [sidebarWidth, setSidebarWidth] = useState(280);
+  const sidebarWidthRef = useRef(280);
+  useEffect(() => {
+    sidebarWidthRef.current = sidebarWidth;
+  }, [sidebarWidth]);
+
+  const isResizingSidebarRef = useRef(false);
+  const [isResizingSidebar, setIsResizingSidebar] = useState(false);
+
+  const handleSidebarDrag = useCallback((e) => {
+    if (!isResizingSidebarRef.current) return;
+    const leftOffset = isReadOnly ? 0 : 44;
+    let newWidth = e.clientX - leftOffset;
+    
+    if (newWidth < 180) newWidth = 180;
+    if (newWidth > 600) newWidth = 600;
+    
+    setSidebarWidth(newWidth);
+  }, [isReadOnly]);
+
+  const handleSidebarDragEnd = useCallback(() => {
+    isResizingSidebarRef.current = false;
+    setIsResizingSidebar(false);
+    document.removeEventListener('mousemove', handleSidebarDrag);
+    document.removeEventListener('mouseup', handleSidebarDragEnd);
+    document.body.style.userSelect = 'auto';
+    document.body.style.cursor = 'auto';
+  }, [handleSidebarDrag]);
+
+  const handleSidebarDragStart = (e) => {
+    e.preventDefault();
+    isResizingSidebarRef.current = true;
+    setIsResizingSidebar(true);
+    document.addEventListener('mousemove', handleSidebarDrag);
+    document.addEventListener('mouseup', handleSidebarDragEnd);
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'col-resize';
+  };
+
+  // Preview Panel Resize State & Callbacks
   const [previewWidth, setPreviewWidth] = useState(50);
   const [isDragging, setIsDragging] = useState(false);
   const isDraggingRef = useRef(false);
@@ -70,8 +135,8 @@ const ProjectEditor = () => {
   const handleDrag = useCallback((e) => {
     if (!isDraggingRef.current) return;
     const windowWidth = window.innerWidth;
-    const sidebarWidth = 324; // Approximate width of sidebars (44px + 280px)
-    const availableWidth = windowWidth - sidebarWidth;
+    const totalSidebarWidth = (isReadOnly ? 0 : 44) + sidebarWidthRef.current;
+    const availableWidth = windowWidth - totalSidebarWidth;
     
     // e.clientX is absolute. The preview is on the right.
     // So the preview width in pixels is windowWidth - e.clientX
@@ -81,7 +146,7 @@ const ProjectEditor = () => {
     if (newWidth > 85) newWidth = 85;
     
     setPreviewWidth(newWidth);
-  }, []);
+  }, [isReadOnly]);
 
   const handleDragEnd = useCallback(() => {
     isDraggingRef.current = false;
@@ -167,15 +232,33 @@ const ProjectEditor = () => {
           }
           // Session joining happens in a separate useEffect once socket is ready
         }
+
+        // If not joining a live session, fetch the most recent session's notes and chat (for project owner)
+        if (!sessionParam && projRes.data) {
+          const projectOwnerId = typeof projRes.data.ownerId === 'object' ? projRes.data.ownerId._id : projRes.data.ownerId;
+          const currentUserId = user?.userId || user?._id;
+          if (projectOwnerId === currentUserId) {
+            try {
+              const lastRes = await axios.get(`${apiUrl}/collab/project/${projectId}/last`, { withCredentials: true });
+              if (lastRes.data) {
+                setLastSession(lastRes.data);
+                setMessages(lastRes.data.messages || []);
+                setPrivateNotes(lastRes.data.privateNotes || '');
+              }
+            } catch (err) {
+              console.error('Failed to load past session notes', err);
+            }
+          }
+        }
       } catch (error) {
-        toast.error('Failed to load project editor');
+        toast.error('Failed to load codepad editor');
         navigate('/dashboard');
       } finally {
         setLoading(false);
       }
     };
     fetchProjectAndFiles();
-  }, [projectId, navigate, searchParams]);
+  }, [projectId, navigate, searchParams, user]);
 
   // ─── AUTO-JOIN session from URL params ──────────────
   useEffect(() => {
@@ -246,8 +329,20 @@ const ProjectEditor = () => {
       // Session is now confirmed — release the loader gate
       setWaitingForSession(false);
 
+      setMessages(data.messages || []);
+      if (data.privateNotes !== undefined) {
+        setPrivateNotes(data.privateNotes);
+      }
+
       setShareLink(`${window.location.origin}/collab/${data.sessionId}`);
       toast.success('Joined collaboration session!');
+    };
+
+    const handleChatMessage = (msg) => {
+      setMessages(prev => [...prev, msg]);
+      if (sidebarTabRef.current !== 'chat') {
+        setUnreadChatCount(prev => prev + 1);
+      }
     };
 
     const handleUserJoined = (userData) => {
@@ -368,17 +463,17 @@ const ProjectEditor = () => {
       toast.error(reason || 'You have been disconnected from the session.');
     };
 
-    const handleContentSync = ({ fileId, content }) => {
+    const handleContentSync = ({ fileId, content, lastSavedAt }) => {
       setFiles(prev => prev.map(f => {
         if ((f.fileId || f._id) === fileId) {
-          return { ...f, content };
+          return { ...f, content, updatedAt: lastSavedAt || f.updatedAt };
         }
         return f;
       }));
 
       setSelectedFile(prev => {
         if (prev && (prev.fileId || prev._id) === fileId) {
-          return { ...prev, content };
+          return { ...prev, content, updatedAt: lastSavedAt || prev.updatedAt };
         }
         return prev;
       });
@@ -396,12 +491,9 @@ const ProjectEditor = () => {
         return f;
       }));
 
-      setSelectedFile(prev => {
-        if (prev && (prev.fileId || prev._id) === fileId) {
-          return { ...prev, content: changes };
-        }
-        return prev;
-      });
+      // Do NOT update selectedFile.content here to avoid triggering
+      // rendering and potential rollback conflicts on fast remote typing.
+      // Monaco handles live remote typing updates internally via its socket listener.
 
       if (codeRef.current) {
         codeRef.current[fileId] = changes;
@@ -423,6 +515,54 @@ const ProjectEditor = () => {
       }
     };
 
+    const handleFileCreated = ({ file }) => {
+      setFiles(prev => {
+        const fileId = file.fileId || file._id;
+        if (prev.some(f => (f.fileId || f._id) === fileId)) return prev;
+        return [...prev, file];
+      });
+      toast(`${file.name} created`, { icon: '📄' });
+    };
+
+    const handleFileRenamed = ({ file }) => {
+      const fileId = file.fileId || file._id;
+      setFiles(prev => prev.map(f => (f.fileId || f._id) === fileId ? file : f));
+      setSelectedFile(prev => {
+        if (prev && (prev.fileId || prev._id) === fileId) {
+          return file;
+        }
+        return prev;
+      });
+    };
+
+    const handleFileDeleted = ({ fileId }) => {
+      setFiles(prev => prev.filter(f => (f.fileId || f._id) !== fileId));
+      setSelectedFile(prev => {
+        if (prev && (prev.fileId || prev._id) === fileId) {
+          return null;
+        }
+        return prev;
+      });
+    };
+
+    const handleFolderRenamed = ({ files }) => {
+      setFiles(prev => {
+        const updatedIds = files.map(f => f.fileId || f._id);
+        const otherFiles = prev.filter(f => !updatedIds.includes(f.fileId || f._id));
+        return [...otherFiles, ...files];
+      });
+    };
+
+    const handleFolderDeleted = ({ deletedFileIds }) => {
+      setFiles(prev => prev.filter(f => !deletedFileIds.includes(f.fileId || f._id)));
+      setSelectedFile(prev => {
+        if (prev && deletedFileIds.includes(prev.fileId || prev._id)) {
+          return null;
+        }
+        return prev;
+      });
+    };
+
     socket.on('session-joined', handleSessionJoined);
     socket.on('user-joined', handleUserJoined);
     socket.on('user-left', handleUserLeft);
@@ -433,6 +573,12 @@ const ProjectEditor = () => {
     socket.on('content-sync', handleContentSync);
     socket.on('code-change', handleRemoteCodeChange);
     socket.on('copy-paste-restriction-updated', handleCopyPasteRestrictionUpdated);
+    socket.on('file-created', handleFileCreated);
+    socket.on('file-renamed', handleFileRenamed);
+    socket.on('file-deleted', handleFileDeleted);
+    socket.on('folder-renamed', handleFolderRenamed);
+    socket.on('folder-deleted', handleFolderDeleted);
+    socket.on('chat-message', handleChatMessage);
 
     return () => {
       socket.off('session-joined', handleSessionJoined);
@@ -445,6 +591,12 @@ const ProjectEditor = () => {
       socket.off('content-sync', handleContentSync);
       socket.off('code-change', handleRemoteCodeChange);
       socket.off('copy-paste-restriction-updated', handleCopyPasteRestrictionUpdated);
+      socket.off('file-created', handleFileCreated);
+      socket.off('file-renamed', handleFileRenamed);
+      socket.off('file-deleted', handleFileDeleted);
+      socket.off('folder-renamed', handleFolderRenamed);
+      socket.off('folder-deleted', handleFolderDeleted);
+      socket.off('chat-message', handleChatMessage);
     };
   }, [socket]);
 
@@ -478,6 +630,12 @@ const ProjectEditor = () => {
       const { sessionId } = response.data;
       setShareLink(`${window.location.origin}/collab/${sessionId}`);
 
+      // Update URL search params so the session persists on page refresh
+      const newParams = new URLSearchParams(searchParams);
+      newParams.set('session', sessionId);
+      newParams.set('file', selectedFile.fileId || selectedFile._id);
+      setSearchParams(newParams, { replace: true });
+
       // Join the session via socket
       if (socket) {
         socket.emit('join-session', { sessionId });
@@ -487,7 +645,7 @@ const ProjectEditor = () => {
     } finally {
       setIsStartingCollab(false);
     }
-  }, [selectedFile, user, projectId, socket]);
+  }, [selectedFile, user, projectId, socket, searchParams, setSearchParams]);
 
   // ─── END COLLABORATION ──────────────────────────────
   const handleEndCollab = useCallback(async (discard = false) => {
@@ -499,6 +657,10 @@ const ProjectEditor = () => {
         discardChanges: discard
       }, { withCredentials: true });
 
+      setLastSession({
+        ...collabSession,
+        status: 'Ended'
+      });
       setCollabSession(null);
       setCollabParticipants([]);
       setShareLink('');
@@ -576,6 +738,14 @@ const ProjectEditor = () => {
       
       setFiles(prev => [...prev, response.data]);
       toast.success('File created');
+
+      // Emit file-created to collaborators
+      if (socket && collabSession) {
+        socket.emit('file-created', {
+          sessionId: collabSession.sessionId,
+          file: response.data
+        });
+      }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to create file');
     }
@@ -596,6 +766,14 @@ const ProjectEditor = () => {
       }
       
       toast.success('Renamed successfully');
+
+      // Emit file-renamed to collaborators
+      if (socket && collabSession) {
+        socket.emit('file-renamed', {
+          sessionId: collabSession.sessionId,
+          file: response.data
+        });
+      }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to rename file');
     }
@@ -606,40 +784,58 @@ const ProjectEditor = () => {
     
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      await axios.delete(`${apiUrl}/files/${node.fileId || node.originalFile?._id}`, { withCredentials: true });
+      const targetFileId = node.fileId || node.originalFile?._id;
+      await axios.delete(`${apiUrl}/files/${targetFileId}`, { withCredentials: true });
       
-      setFiles(prev => prev.filter(f => (f.fileId || f._id) !== (node.fileId || node.originalFile?._id)));
-      if ((selectedFile?.fileId || selectedFile?._id) === (node.fileId || node.originalFile?._id)) {
+      setFiles(prev => prev.filter(f => (f.fileId || f._id) !== targetFileId));
+      if ((selectedFile?.fileId || selectedFile?._id) === targetFileId) {
         setSelectedFile(null);
       }
       toast.success('File deleted');
+
+      // Emit file-deleted to collaborators
+      if (socket && collabSession) {
+        socket.emit('file-deleted', {
+          sessionId: collabSession.sessionId,
+          fileId: targetFileId
+        });
+      }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to delete file');
     }
   };
 
   const handleSaveFileContent = async (fileId, newContent, isAutoSave = false) => {
+    if (codeRef.current) {
+      codeRef.current[fileId] = newContent;
+    }
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
       const response = await axios.put(`${apiUrl}/files/${fileId}/content`, {
         content: newContent
       }, { withCredentials: true });
       
+      const updatedAt = response.data.updatedAt || new Date().toISOString();
+
       // Update local files state with new size/lastEditedBy
       setFiles(prev => prev.map(f => {
         if ((f.fileId || f._id) === fileId) {
-          return { ...f, content: newContent, size: response.data.size };
+          const latestContent = (codeRef.current && codeRef.current[fileId] !== undefined)
+            ? codeRef.current[fileId]
+            : newContent;
+          return { ...f, content: latestContent, size: response.data.size, updatedAt };
         }
         return f;
       }));
       
       // Update selected file object to drop the dirty state
       if ((selectedFile?.fileId || selectedFile?._id) === fileId) {
-        setSelectedFile(prev => ({ ...prev, content: newContent }));
-      }
-
-      if (codeRef.current) {
-        codeRef.current[fileId] = newContent;
+        setSelectedFile(prev => {
+          const latestContent = (codeRef.current && codeRef.current[fileId] !== undefined)
+            ? codeRef.current[fileId]
+            : newContent;
+          return { ...prev, content: latestContent, updatedAt };
+        });
       }
 
       if (socket && collabSession) {
@@ -647,12 +843,14 @@ const ProjectEditor = () => {
           sessionId: collabSession.sessionId,
           fileId,
           content: newContent,
+          lastSavedAt: updatedAt,
         });
       }
       
       if (!isAutoSave) {
         toast.success('File saved');
       }
+      return response.data;
     } catch (error) {
       console.error('Save error:', error);
       if (!isAutoSave) {
@@ -669,6 +867,12 @@ const ProjectEditor = () => {
       }
       return f;
     }));
+    setSelectedFile(prev => {
+      if (prev && (prev.fileId || prev._id) === fileId) {
+        return { ...prev, content: newContent };
+      }
+      return prev;
+    });
   }, []);
 
   const handleRenameFolder = async (node, newName, newPath) => {
@@ -687,6 +891,14 @@ const ProjectEditor = () => {
       });
       
       toast.success('Folder renamed');
+
+      // Emit folder-renamed to collaborators
+      if (socket && collabSession) {
+        socket.emit('folder-renamed', {
+          sessionId: collabSession.sessionId,
+          files: response.data.files
+        });
+      }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to rename folder');
     }
@@ -710,6 +922,14 @@ const ProjectEditor = () => {
       }
       
       toast.success('Folder deleted');
+
+      // Emit folder-deleted to collaborators
+      if (socket && collabSession) {
+        socket.emit('folder-deleted', {
+          sessionId: collabSession.sessionId,
+          deletedFileIds: deletedIds
+        });
+      }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to delete folder');
     }
@@ -785,7 +1005,7 @@ const ProjectEditor = () => {
 
   const handleSaveMeta = async () => {
     const trimmedName = editName.trim();
-    if (!trimmedName) { toast.error('Project name cannot be empty'); return; }
+    if (!trimmedName) { toast.error('Code pad name cannot be empty'); return; }
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
       await axios.patch(`${apiUrl}/projects/${projectId}`, {
@@ -795,9 +1015,32 @@ const ProjectEditor = () => {
       // Only update name/description to preserve populated ownerId and other fields
       setProject(prev => ({ ...prev, name: trimmedName, description: editDesc.trim() }));
       setEditingMeta(false);
-      toast.success('Project updated');
+      toast.success('Code pad updated');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update project');
+      toast.error(err.response?.data?.message || 'Failed to update codepad');
+    }
+  };
+
+  const handleSendChatMessage = (text) => {
+    const sessionParam = searchParams.get('session');
+    if (!socket || !sessionParam) return;
+    socket.emit('send-chat-message', { sessionId: sessionParam, text });
+  };
+
+  const handleUpdatePrivateNotes = async (text) => {
+    setPrivateNotes(text);
+    const sessionParam = searchParams.get('session');
+    if (collabSession && socket && sessionParam) {
+      socket.emit('update-private-notes', { sessionId: sessionParam, text });
+    } else if (lastSession && lastSession.sessionId) {
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+        await axios.patch(`${apiUrl}/collab/${lastSession.sessionId}/notes`, {
+          privateNotes: text
+        }, { withCredentials: true });
+      } catch (err) {
+        console.error('Failed to auto-save notes via HTTP', err);
+      }
     }
   };
 
@@ -807,17 +1050,16 @@ const ProjectEditor = () => {
     return <div className="h-[calc(100vh-73px)] w-full flex items-center justify-center bg-dark"><Loader2 className="animate-spin text-primary" size={48} /></div>;
   }
 
-  // Determine if the current user is not the owner (e.g. read-only mode for public viewing)
-  // project.ownerId can be an object (if populated) or string
-  const projectOwnerId = typeof project?.ownerId === 'object' ? project.ownerId._id : project?.ownerId;
-  const currentUserId = user?.userId || user?._id;
-  const isReadOnly = collabSession ? false : (projectOwnerId !== currentUserId);
-
-  const isWebProject = ['react', 'vanilla-web', 'node-web'].includes(project?.language);
+  // (Variables moved to top of component to support resizable sidebar handlers)
 
   const handleSearchResultClick = (fileObj, lineNumber) => {
     setSelectedFile(fileObj);
     setScrollToLine(lineNumber);
+    if (collabSession) {
+      const newParams = new URLSearchParams(searchParams);
+      newParams.set('file', fileObj.fileId || fileObj._id);
+      setSearchParams(newParams, { replace: true });
+    }
   };
 
   return (
@@ -883,9 +1125,24 @@ const ProjectEditor = () => {
                 ? 'text-primary bg-white/5 shadow-[inset_2px_0_0_0_#6366f1]' 
                 : 'text-muted hover:text-main hover:bg-white/5'
             }`}
-            title="Project Comments & Code Review"
+            title="CodePad Comments & Code Review"
           >
             <MessageSquare size={18} />
+          </button>
+          <button
+            id="sidebar-tab-chat"
+            onClick={() => setSidebarTab('chat')}
+            className={`p-2.5 rounded-lg transition-all duration-150 relative ${
+              sidebarTab === 'chat' 
+                ? 'text-primary bg-white/5 shadow-[inset_2px_0_0_0_#6366f1]' 
+                : 'text-muted hover:text-main hover:bg-white/5'
+            }`}
+            title="Chat & Notes"
+          >
+            <MessageCircle size={18} />
+            {unreadChatCount > 0 && (
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full border border-[#181825]" />
+            )}
           </button>
           <button
             id="sidebar-tab-whiteboard"
@@ -903,7 +1160,7 @@ const ProjectEditor = () => {
       )}
 
       {/* Sidebar Panel */}
-      <div className="w-[280px] shrink-0 border-r border-white/10 flex flex-col bg-[#1e1e2e]">
+      <div style={{ width: `${sidebarWidth}px` }} className="shrink-0 border-r border-white/10 flex flex-col bg-[#1e1e2e]">
         {/* Project name header — click pencil to edit (owner only) */}
         {editingMeta ? (
           <div className="p-2 border-b border-white/5 flex flex-col gap-1.5">
@@ -913,7 +1170,7 @@ const ProjectEditor = () => {
               onChange={e => setEditName(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') handleSaveMeta(); if (e.key === 'Escape') setEditingMeta(false); }}
               className="w-full bg-white/5 border border-white/10 rounded px-2 py-1 text-sm text-main focus:outline-none focus:border-primary"
-              placeholder="Project name"
+              placeholder="Code pad name"
               maxLength={80}
             />
             <input
@@ -943,6 +1200,12 @@ const ProjectEditor = () => {
           <div className="p-3 border-b border-white/5 flex justify-between items-center group">
             <div className="flex-1 min-w-0">
               <div className="font-semibold text-sm truncate opacity-80 uppercase tracking-widest text-primary">{project?.name}</div>
+              {project?.createdAt && (
+                <div className="text-[10px] text-muted truncate mt-0.5 flex items-center gap-1">
+                  <Calendar size={10} className="shrink-0 opacity-70" />
+                  <span>Created {new Date(project.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                </div>
+              )}
               {project?.description && (
                 <div className="text-[10px] text-muted truncate mt-0.5">{project.description}</div>
               )}
@@ -951,7 +1214,7 @@ const ProjectEditor = () => {
               <button
                 onClick={() => { setEditName(project?.name || ''); setEditDesc(project?.description || ''); setEditingMeta(true); }}
                 className="ml-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-white/10 text-muted hover:text-primary"
-                title="Edit project name & description"
+                title="Edit codepad name & description"
               >
                 <Pencil size={12} />
               </button>
@@ -971,7 +1234,15 @@ const ProjectEditor = () => {
                   onRenameFolder={isReadOnly ? () => toast.error('Read only') : handleRenameFolder}
                   onDeleteFolder={isReadOnly ? () => toast.error('Read only') : handleDeleteFolder}
                   onMoveNode={isReadOnly ? () => toast.error('Read only') : handleMoveNode}
-                  onFileSelect={(file) => { setSelectedFile(file); setScrollToLine(null); }}
+                  onFileSelect={(file) => {
+                    setSelectedFile(file);
+                    setScrollToLine(null);
+                    if (collabSession) {
+                      const newParams = new URLSearchParams(searchParams);
+                      newParams.set('file', file.fileId || file._id);
+                      setSearchParams(newParams, { replace: true });
+                    }
+                  }}
                 />
               </div>
               {isWebProject && (
@@ -1010,7 +1281,23 @@ const ProjectEditor = () => {
               onFileSelect={(file, line) => {
                 setSelectedFile(file);
                 if (line) setScrollToLine(line);
+                if (collabSession) {
+                  const newParams = new URLSearchParams(searchParams);
+                  newParams.set('file', file.fileId || file._id);
+                  setSearchParams(newParams, { replace: true });
+                }
               }}
+            />
+          )}
+          {sidebarTab === 'chat' && (
+            <ChatPanel
+              collabSession={collabSession || lastSession}
+              messages={messages}
+              privateNotes={privateNotes}
+              currentUserId={currentUserId}
+              currentUsername={currentUsername}
+              onSendChatMessage={handleSendChatMessage}
+              onUpdatePrivateNotes={handleUpdatePrivateNotes}
             />
           )}
           {sidebarTab === 'whiteboard' && (
@@ -1030,6 +1317,14 @@ const ProjectEditor = () => {
           )}
         </div>
       </div>
+
+      {/* Sidebar Resizer */}
+      <div
+        onMouseDown={handleSidebarDragStart}
+        className={`w-[4px] hover:w-[6px] active:w-[6px] cursor-col-resize shrink-0 transition-all duration-150 z-30 select-none h-full border-r border-white/5 hover:border-primary/50 active:border-primary ${
+          isResizingSidebar ? 'bg-primary border-primary' : 'bg-transparent hover:bg-primary/20 active:bg-primary/40'
+        }`}
+      />
       
       {/* Main Editor Area */}
       <div className="flex-1 flex bg-[#181825] overflow-hidden">
