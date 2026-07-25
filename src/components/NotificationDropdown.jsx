@@ -150,6 +150,7 @@ const NotificationDropdown = ({
                     <img 
                       src={n.actorId.avatarUrl} 
                       alt="Avatar" 
+                      referrerpolicy="no-referrer"
                       className="absolute inset-0 w-full h-full rounded-full object-cover" 
                     />
                   )}

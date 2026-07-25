@@ -11,9 +11,9 @@ const LANGUAGES = [
   { value: 'cpp', label: 'C++' },
   { value: 'go', label: 'Go' },
   { value: 'ruby', label: 'Ruby' },
-  { value: 'react', label: 'React (Web Project)' },
-  { value: 'node-web', label: 'Node.js (Web Project)' },
-  { value: 'vanilla-web', label: 'Vanilla HTML/CSS/JS (Web Project)' }
+  { value: 'react', label: 'React (Web CodePad)' },
+  { value: 'node-web', label: 'Node.js (Web CodePad)' },
+  { value: 'vanilla-web', label: 'Vanilla HTML/CSS/JS (Web CodePad)' }
 ];
 
 const CreateProjectModal = ({ isOpen, onClose, onSubmit, loading }) => {
@@ -39,7 +39,7 @@ const CreateProjectModal = ({ isOpen, onClose, onSubmit, loading }) => {
     <div className="fixed inset-0 w-screen h-screen bg-black/60 backdrop-blur-sm flex items-center justify-center z-[1000] animate-fade-in">
       <div className="w-full max-w-[500px] p-8 glass-panel shadow-[0_20px_60px_rgba(0,0,0,0.5)]">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-main m-0">Create New Project</h2>
+          <h2 className="text-2xl font-bold text-main m-0">Create New CodePad</h2>
           <button onClick={onClose} className="bg-transparent border-none text-muted cursor-pointer p-2 rounded-xl flex items-center justify-center transition-all duration-150 hover:bg-white/10 hover:text-main">
             <X size={20} />
           </button>
@@ -47,7 +47,7 @@ const CreateProjectModal = ({ isOpen, onClose, onSubmit, loading }) => {
 
         <form onSubmit={handleSubmit} className="flex flex-col">
           <Input 
-            label="Project Name"
+            label="CodePad Name"
             name="name"
             placeholder="e.g. awesome-app"
             value={formData.name}
@@ -60,7 +60,7 @@ const CreateProjectModal = ({ isOpen, onClose, onSubmit, loading }) => {
             <textarea
               name="description"
               className="w-full bg-input border border-white/10 rounded-xl py-3 px-4 text-main font-sans text-base transition-all duration-150 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 placeholder-white/20 resize-y"
-              placeholder="What is this project about?"
+              placeholder="What is this codepad about?"
               value={formData.description}
               onChange={handleChange}
               rows="3"
@@ -99,7 +99,7 @@ const CreateProjectModal = ({ isOpen, onClose, onSubmit, loading }) => {
           <div className="flex justify-end gap-4 mt-2 pt-6 border-t border-white/10">
             <Button variant="secondary" onClick={onClose} disabled={loading}>Cancel</Button>
             <Button type="submit" variant="primary" disabled={loading}>
-              {loading ? 'Creating...' : 'Create Project'}
+              {loading ? 'Creating...' : 'Create CodePad'}
             </Button>
           </div>
         </form>

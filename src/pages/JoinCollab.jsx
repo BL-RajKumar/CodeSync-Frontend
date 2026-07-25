@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Loader2, Lock, AlertCircle } from 'lucide-react';
-import { toast } from 'react-hot-toast';
+import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
 
 const generateGuestUserId = () => {
@@ -26,6 +26,7 @@ const JoinCollab = () => {
   const [showGuestForm, setShowGuestForm] = useState(false);
   
   const [guestName, setGuestName] = useState('');
+  const [guestEmail, setGuestEmail] = useState('');
   const [password, setPassword] = useState('');
   const [verifying, setVerifying] = useState(false);
 
@@ -40,10 +41,14 @@ const JoinCollab = () => {
         const data = response.data;
         setSessionInfo(data);
 
-        // Prepopulate guest username if they already set it
+        // Prepopulate guest username and email if already set
         const savedGuestName = sessionStorage.getItem(`collab_guest_name_${sessionId}`);
         if (savedGuestName) {
           setGuestName(savedGuestName);
+        }
+        const savedGuestEmail = sessionStorage.getItem(`collab_guest_email_${sessionId}`);
+        if (savedGuestEmail) {
+          setGuestEmail(savedGuestEmail);
         }
 
         if (data.isPasswordProtected) {
@@ -106,6 +111,7 @@ const JoinCollab = () => {
           sessionStorage.setItem(`collab_guest_uid_${sessionId}`, guestUserId);
         }
         sessionStorage.setItem(`collab_guest_name_${sessionId}`, guestName.trim());
+        sessionStorage.setItem(`collab_guest_email_${sessionId}`, guestEmail.trim());
       }
 
       navigate(`/p/${sessionInfo.projectId}?session=${sessionInfo.sessionId}&file=${sessionInfo.fileId}`, { replace: true });
@@ -135,7 +141,7 @@ const JoinCollab = () => {
           onClick={() => navigate('/explore')}
           className="px-6 py-2 rounded-lg bg-primary text-white font-semibold hover:bg-primary-hover transition-colors"
         >
-          Explore Projects
+          Explore CodePads
         </button>
       </div>
     );
@@ -159,20 +165,34 @@ const JoinCollab = () => {
 
           <form onSubmit={handleJoinSubmit} className="space-y-4">
             {!user && (
-              <div>
-                <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-2">
-                  Your Display Name (Guest)
-                </label>
-                <input
-                  type="text"
-                  value={guestName}
-                  onChange={(e) => setGuestName(e.target.value)}
-                  placeholder="Enter your name (e.g. Candidate)"
-                  autoFocus={!needsPassword}
-                  required
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all font-medium"
-                />
-              </div>
+              <>
+                <div>
+                  <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-2">
+                    Your Full Name (Guest)
+                  </label>
+                  <input
+                    type="text"
+                    value={guestName}
+                    onChange={(e) => setGuestName(e.target.value)}
+                    placeholder="Enter your name (e.g. Candidate)"
+                    autoFocus={!needsPassword}
+                    required
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-2">
+                    Your Email Address (Guest)
+                  </label>
+                  <input
+                    type="email"
+                    value={guestEmail}
+                    onChange={(e) => setGuestEmail(e.target.value)}
+                    placeholder="Enter your email (e.g. candidate@example.com)"
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all font-medium"
+                  />
+                </div>
+              </>
             )}
 
             {needsPassword && (

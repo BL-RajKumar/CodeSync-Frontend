@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Editor from '@monaco-editor/react';
 import axios from 'axios';
 import { Save, Loader2, Play, MessageSquare, Clock, CheckCircle2 } from 'lucide-react';
-import { toast } from 'react-hot-toast';
+import { toast } from 'react-toastify';
 import CollaborationBar from './CollaborationBar';
 import InlineCommentWidget from './InlineCommentWidget';
 import { useTheme } from '../context/ThemeContext';
@@ -39,6 +39,12 @@ const getLanguageFromPath = (path) => {
   }
 };
 
+const getFileSavedTime = (f) => {
+  if (!f) return null;
+  const time = f.updatedAt || f.createdAt || f.updated_at || f.created_at || f.lastSavedAt;
+  return time ? new Date(time) : null;
+};
+
 const CodeEditor = ({ 
   file, 
   onSave, 
@@ -71,10 +77,7 @@ const CodeEditor = ({
   const [prevFileId, setPrevFileId] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isDirtyState, setIsDirtyState] = useState(false);
-  const [lastSavedTime, setLastSavedTime] = useState(() => {
-    const time = file?.updatedAt || file?.createdAt;
-    return time ? new Date(time) : null;
-  });
+  const [lastSavedTime, setLastSavedTime] = useState(() => getFileSavedTime(file));
   const sessionMountTimeRef = useRef(new Date());
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const editorRef = useRef(null);
@@ -208,6 +211,7 @@ const CodeEditor = ({
     setContent(initialContent);
     setCommentWidget(null);
     lastSavedContentRef.current = file?.content || '';
+    setLastSavedTime(getFileSavedTime(file));
     if (codeRef && currentFileId && codeRef.current[currentFileId] === undefined) {
       codeRef.current[currentFileId] = initialContent;
     }
@@ -226,8 +230,7 @@ const CodeEditor = ({
     setContent(initialContent);
     setIsDirtyState(false);
     lastSavedContentRef.current = file?.content || '';
-    const time = file?.updatedAt || file?.createdAt;
-    setLastSavedTime(time ? new Date(time) : null);
+    setLastSavedTime(getFileSavedTime(file));
     setCommentWidget(null); // close any open widget when file changes
 
     // Cancel any pending auto-save from the previous file
@@ -246,7 +249,7 @@ const CodeEditor = ({
     if (forceContentKey > 0 && editorRef.current) {
       editorRef.current.getModel()?.setValue(initialContent);
     }
-  }, [file?.fileId, file?._id, forceContentKey, codeRef]);
+  }, [file?.fileId, file?._id, file?.updatedAt, file?.createdAt, forceContentKey, codeRef]);
 
   // Watch for external content updates to the active file (e.g. from the package manager or full content sync)
   useEffect(() => {
@@ -778,13 +781,22 @@ const CodeEditor = ({
 
   const formatSavedTime = (date) => {
     if (!date) return '';
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleTimeString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true,
+    });
   };
 
   if (!file) return null;
 
   // isDirty is now driven by isDirtyState, set in handleContentChange and cleared after save.
   const isDirty = isDirtyState;
+  const effectiveSavedTime = lastSavedTime || getFileSavedTime(file) || sessionMountTimeRef.current;
 
   return (
     <div className="flex flex-col h-full bg-[#1e1e2e] border border-white/10 rounded-xl overflow-hidden">
@@ -897,16 +909,13 @@ const CodeEditor = ({
       {/* Premium Status Bar */}
       <div className="px-4 py-2 bg-[#181825] border-t border-white/10 flex flex-wrap items-center justify-between text-xs text-[#a9b1d6] font-mono select-none gap-4">
         {/* Left: Session Start Time */}
-        <div className="flex items-center gap-2">
-          <Clock size={14} className="text-primary/70" />
-          <span className="text-white/60">
+        <div className="flex items-center gap-2 text-muted">
+          <Clock size={14} />
+          <span>
             {collabSession ? 'Collab Session' : 'Local Session'} Started:
           </span>
-          <span className="text-white font-medium">
-            {collabSession?.createdAt 
-              ? new Date(collabSession.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-              : sessionMountTimeRef.current.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-            }
+          <span>
+            {formatSavedTime(collabSession?.createdAt || sessionMountTimeRef.current)}
           </span>
         </div>
 
@@ -928,7 +937,7 @@ const CodeEditor = ({
               <CheckCircle2 size={13} className="text-emerald-400" />
               <span>Last Saved:</span>
               <span className="font-medium text-white/80">
-                {lastSavedTime ? formatSavedTime(lastSavedTime) : 'Never'}
+                {formatSavedTime(effectiveSavedTime)}
               </span>
             </div>
           )}

@@ -2,10 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { toast } from 'react-hot-toast';
-import { Code, Star, GitFork, Trash2 } from 'lucide-react';
+import { toast } from 'react-toastify';
+import { Code, Star, GitFork, Trash2, Calendar } from 'lucide-react';
 import CreateProjectModal from '../components/CreateProjectModal';
 import { LanguageIcon, getLanguageLabel } from '../components/LanguageIcon';
+
+const formatDate = (dateString) => {
+  if (!dateString) return null;
+  return new Date(dateString).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
+};
 
 
 const Dashboard = () => {
@@ -28,7 +37,7 @@ const Dashboard = () => {
       const res = await axios.get(`${apiUrl}/projects`, { withCredentials: true });
       setProjects(res.data);
     } catch (error) {
-      toast.error('Failed to load your projects');
+      toast.error('Failed to load your codepads');
     } finally {
       setLoadingProjects(false);
     }
@@ -41,7 +50,7 @@ const Dashboard = () => {
       const res = await axios.get(`${apiUrl}/projects/starred`, { withCredentials: true });
       setStarredProjects(res.data);
     } catch (error) {
-      toast.error('Failed to load starred projects');
+      toast.error('Failed to load starred codepads');
     } finally {
       setLoadingStarred(false);
     }
@@ -64,13 +73,13 @@ const Dashboard = () => {
       const res = await axios.post(`${apiUrl}/projects`, projectData, {
         withCredentials: true
       });
-      toast.success('Project created successfully!');
+      toast.success('Code pad created successfully!');
       setIsModalOpen(false);
       // Instead of navigating, just refresh the list and stay on dashboard
       fetchProjects();
       setActiveTab('my_projects');
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to create project');
+      toast.error(error.response?.data?.message || 'Failed to create codepad');
     } finally {
       setCreating(false);
     }
@@ -84,14 +93,14 @@ const Dashboard = () => {
       });
       // Remove from local list
       setStarredProjects(prev => prev.filter(p => (p._id || p.projectId) !== projectId));
-      toast.success('Project removed from bookmarks');
+      toast.success('Code pad removed from bookmarks');
     } catch (error) {
-      toast.error('Failed to unstar project');
+      toast.error('Failed to unstar codepad');
     }
   };
 
   const handleDeleteProject = async (projectId) => {
-    if (!window.confirm('Are you sure you want to delete this project? This action cannot be undone and will delete all associated files.')) {
+    if (!window.confirm('Are you sure you want to delete this codepad? This action cannot be undone and will delete all associated files.')) {
       return;
     }
     try {
@@ -100,9 +109,9 @@ const Dashboard = () => {
         withCredentials: true
       });
       setProjects(prev => prev.filter(p => p.projectId !== projectId && p._id !== projectId));
-      toast.success('Project deleted successfully');
+      toast.success('Code pad deleted successfully');
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to delete project');
+      toast.error(error.response?.data?.message || 'Failed to delete codepad');
     }
   };
 
@@ -114,7 +123,7 @@ const Dashboard = () => {
             Welcome back, <span className="text-primary">{user?.username}</span>!
           </h1>
           <p className="text-muted text-lg mb-8">
-            This is your dashboard. From here you can manage your projects, start collaborations, or update your profile.
+            This is your dashboard. From here you can manage your codepads, start collaborations, or update your profile.
           </p>
           
           <div className="flex gap-4">
@@ -122,7 +131,7 @@ const Dashboard = () => {
               Edit Profile
             </Link>
             <button className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-base transition-all duration-150 bg-primary text-white shadow-[0_4px_14px_0_rgba(99,102,241,0.39)] hover:bg-primary-hover hover:-translate-y-[1px] hover:shadow-[0_6px_20px_rgba(99,102,241,0.4)]" onClick={() => setIsModalOpen(true)}>
-              New Project
+              New CodePad
             </button>
           </div>
         </div>
@@ -133,7 +142,7 @@ const Dashboard = () => {
               className={`pb-3 text-lg font-semibold transition-colors relative ${activeTab === 'my_projects' ? 'text-primary' : 'text-muted hover:text-main'}`}
               onClick={() => setActiveTab('my_projects')}
             >
-              My Projects
+              My CodePads
               {activeTab === 'my_projects' && (
                 <span className="absolute bottom-[-1px] left-0 w-full h-[2px] bg-primary rounded-t-md"></span>
               )}
@@ -143,7 +152,7 @@ const Dashboard = () => {
               onClick={() => setActiveTab('starred')}
             >
               <Star size={18} fill={activeTab === 'starred' ? 'currentColor' : 'none'} />
-              Starred Projects
+              Starred CodePads
               {activeTab === 'starred' && (
                 <span className="absolute bottom-[-1px] left-0 w-full h-[2px] bg-primary rounded-t-md"></span>
               )}
@@ -153,7 +162,7 @@ const Dashboard = () => {
           {activeTab === 'my_projects' && (
             <div>
               {loadingProjects ? (
-                <div className="text-center p-8 text-muted">Loading projects...</div>
+                <div className="text-center p-8 text-muted">Loading codepads...</div>
               ) : projects.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {projects.map(project => (
@@ -168,9 +177,15 @@ const Dashboard = () => {
                           <span>{getLanguageLabel(project.language)}</span>
                         </span>
                       </div>
-                      <p className="text-muted text-[0.9rem] mb-6 flex-grow line-clamp-2">
+                      <p className="text-muted text-[0.9rem] mb-4 flex-grow line-clamp-2">
                         {project.description || 'No description provided.'}
                       </p>
+                      {project.createdAt && (
+                        <div className="flex items-center gap-1.5 text-xs text-muted mb-4">
+                          <Calendar size={13} className="shrink-0 opacity-70" />
+                          <span>Created {formatDate(project.createdAt)}</span>
+                        </div>
+                      )}
                       <div className="flex justify-between items-center mt-auto">
                         <div className="flex gap-2 items-center">
                           <span className={`visibility-chip ${
@@ -181,7 +196,7 @@ const Dashboard = () => {
                           <button 
                             onClick={() => handleDeleteProject(project.projectId || project._id)}
                             className="text-muted hover:text-red-400 p-1 rounded-md transition-colors"
-                            title="Delete Project"
+                            title="Delete CodePad"
                           >
                             <Trash2 size={16} />
                           </button>
@@ -195,9 +210,9 @@ const Dashboard = () => {
                 </div>
               ) : (
                 <div className="glass-panel p-12 text-center text-muted rounded-2xl border border-dashed border-white/20">
-                  <p className="mb-4 text-lg">You haven't created any projects yet.</p>
+                  <p className="mb-4 text-lg">You haven't created any codepads yet.</p>
                   <button className="text-primary hover:underline font-semibold" onClick={() => setIsModalOpen(true)}>
-                    Create your first project
+                    Create your first codepad
                   </button>
                 </div>
               )}
@@ -224,9 +239,15 @@ const Dashboard = () => {
                           <span>{getLanguageLabel(project.language)}</span>
                         </span>
                       </div>
-                      <p className="text-muted text-[0.9rem] mb-6 flex-grow line-clamp-2">
+                      <p className="text-muted text-[0.9rem] mb-4 flex-grow line-clamp-2">
                         {project.description || 'No description provided.'}
                       </p>
+                      {project.createdAt && (
+                        <div className="flex items-center gap-1.5 text-xs text-muted mb-4">
+                          <Calendar size={13} className="shrink-0 opacity-70" />
+                          <span>Created {formatDate(project.createdAt)}</span>
+                        </div>
+                      )}
                       <div className="flex justify-between items-center mt-auto pt-4 border-t border-white/10">
                         <div className="flex gap-4 items-center">
                           <button
@@ -252,9 +273,9 @@ const Dashboard = () => {
               ) : (
                 <div className="glass-panel p-12 text-center text-muted rounded-2xl border border-dashed border-white/20">
                   <Star size={48} className="mx-auto mb-4 opacity-50" />
-                  <p className="mb-4 text-lg">You haven't bookmarked any projects yet.</p>
+                  <p className="mb-4 text-lg">You haven't bookmarked any codepads yet.</p>
                   <Link to="/explore" className="text-primary hover:underline font-semibold">
-                    Explore public projects
+                    Explore public codepads
                   </Link>
                 </div>
               )}

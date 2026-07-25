@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { toast } from 'react-hot-toast';
+import { toast } from 'react-toastify';
 import { ShieldAlert, Loader2, Play, Terminal, XOctagon, Clock, Cpu } from 'lucide-react';
 
 const AdminActiveJobs = () => {
@@ -43,8 +43,8 @@ const AdminActiveJobs = () => {
   }, []);
 
   return (
-    <div className="w-full text-main font-sans p-6 md:p-10 h-full overflow-y-auto">
-      <div className="max-w-7xl mx-auto space-y-8 animate-fade-in">
+    <div className="w-full text-main font-sans p-6 md:p-8 h-full overflow-y-auto">
+      <div className="w-full space-y-8 animate-fade-in">
         
         {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-6">

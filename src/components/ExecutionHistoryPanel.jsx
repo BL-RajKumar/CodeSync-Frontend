@@ -5,7 +5,7 @@ import {
   ChevronDown, ChevronRight, Trash2, RefreshCw,
   Terminal, Loader2, History, StopCircle, Eraser,
 } from 'lucide-react';
-import { toast } from 'react-hot-toast';
+import { toast } from 'react-toastify';
 
 // ─── Status display config ───────────────────────────
 const STATUS_CONFIG = {

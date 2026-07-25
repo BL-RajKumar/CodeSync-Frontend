@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Users, Link2, X, Share2, Shield, Loader2, UserPlus, Send, Clipboard } from 'lucide-react';
-import { toast } from 'react-hot-toast';
+import { toast } from 'react-toastify';
 import axios from 'axios';
 import UserSearchInput from './UserSearchInput';
 
@@ -99,7 +99,7 @@ const CollaborationBar = ({ session, participants, isOwner, onEndSession, onStar
               className="w-7 h-7 rounded-full border-2 border-white/20 flex items-center justify-center text-[0.6rem] font-bold text-white relative group cursor-default shadow-md flex-shrink-0"
             >
               {hasAvatar ? (
-                <img src={p.avatarUrl} alt={p.username} className="w-full h-full rounded-full object-cover" />
+                <img src={p.avatarUrl} alt={p.username} referrerpolicy="no-referrer" className="w-full h-full rounded-full object-cover" />
               ) : (
                 <span className="select-none leading-none">{p.username ? p.username.charAt(0).toUpperCase() : '?'}</span>
               )}

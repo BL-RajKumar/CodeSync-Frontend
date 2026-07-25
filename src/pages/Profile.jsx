@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import Input from '../components/Input';
 import Button from '../components/Button';
 import { Camera } from 'lucide-react';
-import { toast } from 'react-hot-toast';
+import { toast } from 'react-toastify';
 import axios from 'axios';
 
 const Profile = () => {
@@ -96,6 +96,7 @@ const Profile = () => {
               <img 
                 src={formData.avatarUrl} 
                 alt="Avatar Preview" 
+                referrerpolicy="no-referrer"
                 className={`w-[80px] h-[80px] rounded-full object-cover border-2 border-primary transition-opacity ${uploadingImage ? 'opacity-50' : 'opacity-100 group-hover:opacity-75'}`} 
               />
             ) : (

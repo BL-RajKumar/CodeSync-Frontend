@@ -6,7 +6,7 @@ import {
   Type, RotateCcw, Copy, ChevronDown, WrapText,
   Download, Search, X, AlignLeft, Hash, StopCircle, History, Code2,
 } from 'lucide-react';
-import { toast } from 'react-hot-toast';
+import { toast } from 'react-toastify';
 import ExecutionHistoryPanel from './ExecutionHistoryPanel';
 import LanguagesPanel from './LanguagesPanel';
 

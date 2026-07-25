@@ -15,7 +15,7 @@ const SearchUsers = () => {
       setLoading(true);
       try {
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-        const res = await axios.get(`${apiUrl}/users/search?q=${encodeURIComponent(query)}`);
+        const res = await axios.get(`${apiUrl}/users/search?q=${encodeURIComponent(query)}`, { withCredentials: true });
         setUsers(res.data);
       } catch (error) {
         console.error('Error fetching users:', error);
@@ -42,7 +42,7 @@ const SearchUsers = () => {
             <Link to={`/u/${user.username}`} key={user._id} className="flex flex-col p-6 glass-panel transition-all duration-150 hover:-translate-y-1 hover:shadow-[0_12px_40px_0_rgba(0,0,0,0.4)] hover:border-primary">
               <div className="flex items-center gap-4 mb-4">
                 {user.avatarUrl ? (
-                  <img src={user.avatarUrl} alt={user.username} className="w-12 h-12 rounded-full object-cover border-2 border-white/10" />
+                  <img src={user.avatarUrl} alt={user.username} referrerpolicy="no-referrer" className="w-12 h-12 rounded-full object-cover border-2 border-white/10" />
                 ) : (
                   <div className="w-12 h-12 rounded-full bg-input flex items-center justify-center border-2 border-white/10 text-muted">
                     <UserIcon size={24} />

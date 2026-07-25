@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, Filter, Star, GitFork, Code2, User as UserIcon, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { toast } from 'react-toastify';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { LanguageIcon, getLanguageLabel } from '../components/LanguageIcon';
@@ -84,7 +84,7 @@ const ExploreProjects = () => {
 
   const handleFork = async (projectId) => {
     if (!user) {
-      toast.error('You must be logged in to fork a project.');
+      toast.error('You must be logged in to fork a codepad.');
       navigate('/login');
       return;
     }
@@ -95,10 +95,10 @@ const ExploreProjects = () => {
         withCredentials: true
       });
 
-      toast.success('Project forked successfully!');
+      toast.success('Code pad forked successfully!');
       navigate(`/p/${response.data.projectId}`);
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to fork project');
+      toast.error(error.response?.data?.message || 'Failed to fork codepad');
     } finally {
       setForkingId(null);
     }
@@ -106,7 +106,7 @@ const ExploreProjects = () => {
 
   const handleStar = async (projectId) => {
     if (!user) {
-      toast.error('You must be logged in to star a project.');
+      toast.error('You must be logged in to star a codepad.');
       navigate('/login');
       return;
     }
@@ -129,15 +129,15 @@ const ExploreProjects = () => {
 
       toast.success(response.data.message);
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to star project');
+      toast.error(error.response?.data?.message || 'Failed to star codepad');
     }
   };
 
   return (
     <div className="container mx-auto px-4 py-8 animate-fade-in mt-8 mb-16">
       <div className="mb-8 text-center">
-        <h1 className="text-[2.5rem] mb-2 font-bold bg-gradient-to-br from-primary to-[#818cf8] bg-clip-text text-transparent">Explore Projects</h1>
-        <p className="text-muted text-lg">Discover open source projects created by the community.</p>
+        <h1 className="text-[2.5rem] mb-2 font-bold bg-gradient-to-br from-primary to-[#818cf8] bg-clip-text text-transparent">Explore CodePads</h1>
+        <p className="text-muted text-lg">discover open source codepads created by the community.</p>
       </div>
 
       <div className="glass-panel flex flex-col md:flex-row gap-4 p-6 mb-8 rounded-2xl items-center">
@@ -145,7 +145,7 @@ const ExploreProjects = () => {
           <Search size={20} className="text-muted mr-3 shrink-0" />
           <input
             type="text"
-            placeholder="Search by project name..."
+            placeholder="Search by codepad name..."
             value={searchName}
             onChange={handleSearchChange}
             className="bg-transparent border-none text-main text-base w-full focus:outline-none placeholder-muted"
@@ -179,12 +179,12 @@ const ExploreProjects = () => {
       {loading ? (
         <div className="flex flex-col items-center justify-center p-16 text-center rounded-2xl">
           <Loader2 className="text-primary animate-spin mb-4" size={48} />
-          <p className="text-muted text-lg">Loading projects...</p>
+          <p className="text-muted text-lg">Loading codepads...</p>
         </div>
       ) : projects.length === 0 ? (
         <div className="glass-panel flex flex-col items-center justify-center p-16 text-center rounded-2xl">
           <Code2 size={48} className="text-muted mb-4 opacity-50" />
-          <h2 className="text-2xl font-bold mb-2 text-main">No projects found</h2>
+          <h2 className="text-2xl font-bold mb-2 text-main">No codepads found</h2>
           <p className="text-muted">Try adjusting your search or filters.</p>
         </div>
       ) : (
@@ -209,7 +209,7 @@ const ExploreProjects = () => {
                 <div className="flex items-center">
                   <Link to={`/u/${project.ownerId?.username}`} className="flex items-center gap-2 text-sm text-main hover:text-primary transition-colors">
                     {project.ownerId?.avatarUrl ? (
-                      <img src={project.ownerId.avatarUrl} alt={project.ownerId.username} className="w-6 h-6 rounded-full object-cover" />
+                      <img src={project.ownerId.avatarUrl} alt={project.ownerId.username} referrerpolicy="no-referrer" className="w-6 h-6 rounded-full object-cover" />
                     ) : (
                       <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
                         {project.ownerId?.username?.charAt(0).toUpperCase()}

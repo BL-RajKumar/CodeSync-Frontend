@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
-import { toast } from 'react-hot-toast';
-import { Loader2, FolderTree, Search, Play, History, Brush, Pencil, Check, X as XIcon } from 'lucide-react';
+import { toast } from 'react-toastify';
+import { Loader2, FolderTree, Search, Play, History, Brush, Pencil, Check, X as XIcon, Calendar } from 'lucide-react';
 import FileTree from '../components/FileTree';
 import SearchPanel from '../components/SearchPanel';
 import SandboxPanel from '../components/SandboxPanel';
@@ -14,7 +14,8 @@ import PackageManager from '../components/PackageManager';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import ProjectCommentsPanel from '../components/ProjectCommentsPanel';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, MessageCircle } from 'lucide-react';
+import ChatPanel from '../components/ChatPanel';
 
 const WhiteboardPanel = React.lazy(() => import('../components/WhiteboardPanel'));
 
@@ -32,6 +33,20 @@ const ProjectEditor = () => {
   const [sidebarTab, setSidebarTab] = useState('files'); // 'files' | 'search' | 'snapshots' | 'run' | 'comments'
   const [scrollToLine, setScrollToLine] = useState(null);
   const [diffModalState, setDiffModalState] = useState({ isOpen: false, snapshot: null });
+
+  // Chat & Notes state
+  const [messages, setMessages] = useState([]);
+  const [privateNotes, setPrivateNotes] = useState('');
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
+  const [lastSession, setLastSession] = useState(null);
+
+  const sidebarTabRef = useRef(sidebarTab);
+  useEffect(() => {
+    sidebarTabRef.current = sidebarTab;
+    if (sidebarTab === 'chat') {
+      setUnreadChatCount(0);
+    }
+  }, [sidebarTab]);
 
   // Inline project meta editing state
   const [editingMeta, setEditingMeta] = useState(false);
@@ -53,8 +68,11 @@ const ProjectEditor = () => {
   // Determine if the current user is not the owner (e.g. read-only mode for public viewing)
   // project.ownerId can be an object (if populated) or string
   const projectOwnerId = typeof project?.ownerId === 'object' ? project.ownerId._id : project?.ownerId;
-  const currentUserId = user?.userId || user?._id;
+  const sessionParam = searchParams.get('session');
+  const currentUserId = user?.userId || user?._id || (sessionParam ? sessionStorage.getItem(`collab_guest_uid_${sessionParam}`) : null);
+  const currentUsername = user?.username || (sessionParam ? sessionStorage.getItem(`collab_guest_name_${sessionParam}`) : 'Guest');
   const isReadOnly = collabSession ? false : (projectOwnerId !== currentUserId);
+
   const isWebProject = ['react', 'vanilla-web', 'node-web'].includes(project?.language);
 
   // Ref to hold the absolute latest code for each file (bypassing autosave delays)
@@ -214,15 +232,33 @@ const ProjectEditor = () => {
           }
           // Session joining happens in a separate useEffect once socket is ready
         }
+
+        // If not joining a live session, fetch the most recent session's notes and chat (for project owner)
+        if (!sessionParam && projRes.data) {
+          const projectOwnerId = typeof projRes.data.ownerId === 'object' ? projRes.data.ownerId._id : projRes.data.ownerId;
+          const currentUserId = user?.userId || user?._id;
+          if (projectOwnerId === currentUserId) {
+            try {
+              const lastRes = await axios.get(`${apiUrl}/collab/project/${projectId}/last`, { withCredentials: true });
+              if (lastRes.data) {
+                setLastSession(lastRes.data);
+                setMessages(lastRes.data.messages || []);
+                setPrivateNotes(lastRes.data.privateNotes || '');
+              }
+            } catch (err) {
+              console.error('Failed to load past session notes', err);
+            }
+          }
+        }
       } catch (error) {
-        toast.error('Failed to load project editor');
+        toast.error('Failed to load codepad editor');
         navigate('/dashboard');
       } finally {
         setLoading(false);
       }
     };
     fetchProjectAndFiles();
-  }, [projectId, navigate, searchParams]);
+  }, [projectId, navigate, searchParams, user]);
 
   // ─── AUTO-JOIN session from URL params ──────────────
   useEffect(() => {
@@ -293,8 +329,20 @@ const ProjectEditor = () => {
       // Session is now confirmed — release the loader gate
       setWaitingForSession(false);
 
+      setMessages(data.messages || []);
+      if (data.privateNotes !== undefined) {
+        setPrivateNotes(data.privateNotes);
+      }
+
       setShareLink(`${window.location.origin}/collab/${data.sessionId}`);
       toast.success('Joined collaboration session!');
+    };
+
+    const handleChatMessage = (msg) => {
+      setMessages(prev => [...prev, msg]);
+      if (sidebarTabRef.current !== 'chat') {
+        setUnreadChatCount(prev => prev + 1);
+      }
     };
 
     const handleUserJoined = (userData) => {
@@ -530,6 +578,7 @@ const ProjectEditor = () => {
     socket.on('file-deleted', handleFileDeleted);
     socket.on('folder-renamed', handleFolderRenamed);
     socket.on('folder-deleted', handleFolderDeleted);
+    socket.on('chat-message', handleChatMessage);
 
     return () => {
       socket.off('session-joined', handleSessionJoined);
@@ -547,6 +596,7 @@ const ProjectEditor = () => {
       socket.off('file-deleted', handleFileDeleted);
       socket.off('folder-renamed', handleFolderRenamed);
       socket.off('folder-deleted', handleFolderDeleted);
+      socket.off('chat-message', handleChatMessage);
     };
   }, [socket]);
 
@@ -607,6 +657,10 @@ const ProjectEditor = () => {
         discardChanges: discard
       }, { withCredentials: true });
 
+      setLastSession({
+        ...collabSession,
+        status: 'Ended'
+      });
       setCollabSession(null);
       setCollabParticipants([]);
       setShareLink('');
@@ -951,7 +1005,7 @@ const ProjectEditor = () => {
 
   const handleSaveMeta = async () => {
     const trimmedName = editName.trim();
-    if (!trimmedName) { toast.error('Project name cannot be empty'); return; }
+    if (!trimmedName) { toast.error('Code pad name cannot be empty'); return; }
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
       await axios.patch(`${apiUrl}/projects/${projectId}`, {
@@ -961,9 +1015,32 @@ const ProjectEditor = () => {
       // Only update name/description to preserve populated ownerId and other fields
       setProject(prev => ({ ...prev, name: trimmedName, description: editDesc.trim() }));
       setEditingMeta(false);
-      toast.success('Project updated');
+      toast.success('Code pad updated');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update project');
+      toast.error(err.response?.data?.message || 'Failed to update codepad');
+    }
+  };
+
+  const handleSendChatMessage = (text) => {
+    const sessionParam = searchParams.get('session');
+    if (!socket || !sessionParam) return;
+    socket.emit('send-chat-message', { sessionId: sessionParam, text });
+  };
+
+  const handleUpdatePrivateNotes = async (text) => {
+    setPrivateNotes(text);
+    const sessionParam = searchParams.get('session');
+    if (collabSession && socket && sessionParam) {
+      socket.emit('update-private-notes', { sessionId: sessionParam, text });
+    } else if (lastSession && lastSession.sessionId) {
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+        await axios.patch(`${apiUrl}/collab/${lastSession.sessionId}/notes`, {
+          privateNotes: text
+        }, { withCredentials: true });
+      } catch (err) {
+        console.error('Failed to auto-save notes via HTTP', err);
+      }
     }
   };
 
@@ -1048,9 +1125,24 @@ const ProjectEditor = () => {
                 ? 'text-primary bg-white/5 shadow-[inset_2px_0_0_0_#6366f1]' 
                 : 'text-muted hover:text-main hover:bg-white/5'
             }`}
-            title="Project Comments & Code Review"
+            title="CodePad Comments & Code Review"
           >
             <MessageSquare size={18} />
+          </button>
+          <button
+            id="sidebar-tab-chat"
+            onClick={() => setSidebarTab('chat')}
+            className={`p-2.5 rounded-lg transition-all duration-150 relative ${
+              sidebarTab === 'chat' 
+                ? 'text-primary bg-white/5 shadow-[inset_2px_0_0_0_#6366f1]' 
+                : 'text-muted hover:text-main hover:bg-white/5'
+            }`}
+            title="Chat & Notes"
+          >
+            <MessageCircle size={18} />
+            {unreadChatCount > 0 && (
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full border border-[#181825]" />
+            )}
           </button>
           <button
             id="sidebar-tab-whiteboard"
@@ -1078,7 +1170,7 @@ const ProjectEditor = () => {
               onChange={e => setEditName(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') handleSaveMeta(); if (e.key === 'Escape') setEditingMeta(false); }}
               className="w-full bg-white/5 border border-white/10 rounded px-2 py-1 text-sm text-main focus:outline-none focus:border-primary"
-              placeholder="Project name"
+              placeholder="Code pad name"
               maxLength={80}
             />
             <input
@@ -1108,6 +1200,12 @@ const ProjectEditor = () => {
           <div className="p-3 border-b border-white/5 flex justify-between items-center group">
             <div className="flex-1 min-w-0">
               <div className="font-semibold text-sm truncate opacity-80 uppercase tracking-widest text-primary">{project?.name}</div>
+              {project?.createdAt && (
+                <div className="text-[10px] text-muted truncate mt-0.5 flex items-center gap-1">
+                  <Calendar size={10} className="shrink-0 opacity-70" />
+                  <span>Created {new Date(project.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                </div>
+              )}
               {project?.description && (
                 <div className="text-[10px] text-muted truncate mt-0.5">{project.description}</div>
               )}
@@ -1116,7 +1214,7 @@ const ProjectEditor = () => {
               <button
                 onClick={() => { setEditName(project?.name || ''); setEditDesc(project?.description || ''); setEditingMeta(true); }}
                 className="ml-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-white/10 text-muted hover:text-primary"
-                title="Edit project name & description"
+                title="Edit codepad name & description"
               >
                 <Pencil size={12} />
               </button>
@@ -1189,6 +1287,17 @@ const ProjectEditor = () => {
                   setSearchParams(newParams, { replace: true });
                 }
               }}
+            />
+          )}
+          {sidebarTab === 'chat' && (
+            <ChatPanel
+              collabSession={collabSession || lastSession}
+              messages={messages}
+              privateNotes={privateNotes}
+              currentUserId={currentUserId}
+              currentUsername={currentUsername}
+              onSendChatMessage={handleSendChatMessage}
+              onUpdatePrivateNotes={handleUpdatePrivateNotes}
             />
           )}
           {sidebarTab === 'whiteboard' && (
