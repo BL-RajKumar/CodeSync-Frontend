@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { toast } from 'react-hot-toast';
+import { toast } from 'react-toastify';
 import { Send, Loader2, Check, Edit2, Trash2, X, Reply, MessageSquare } from 'lucide-react';
 import MentionInput from './MentionInput';
 
@@ -101,7 +101,7 @@ const CommentItem = ({ comment, currentUser, onUpdate, isReply = false }) => {
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-full bg-primary/30 flex items-center justify-center text-[10px] font-bold text-primary overflow-hidden">
               {comment.authorId?.avatarUrl ? (
-                <img src={comment.authorId.avatarUrl} alt={comment.authorId.username} className="w-full h-full object-cover" />
+                <img src={comment.authorId.avatarUrl} alt={comment.authorId.username} referrerpolicy="no-referrer" className="w-full h-full object-cover" />
               ) : (
                 comment.authorId?.username?.charAt(0)?.toUpperCase() || '?'
               )}

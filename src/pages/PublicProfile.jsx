@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { User as UserIcon, Code, Star, GitFork } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
 import { LanguageIcon, getLanguageLabel } from '../components/LanguageIcon';
 
@@ -43,7 +43,7 @@ const PublicProfile = () => {
 
   const handleFork = async (projectId) => {
     if (!user) {
-      toast.error('You must be logged in to fork a project.');
+      toast.error('You must be logged in to fork a codepad.');
       navigate('/login');
       return;
     }
@@ -54,10 +54,10 @@ const PublicProfile = () => {
         withCredentials: true
       });
 
-      toast.success('Project forked successfully!');
+      toast.success('Code pad forked successfully!');
       navigate(`/p/${response.data.projectId}`);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to fork project');
+      toast.error(err.response?.data?.message || 'Failed to fork codepad');
     } finally {
       setForkingId(null);
     }
@@ -65,7 +65,7 @@ const PublicProfile = () => {
 
   const handleStar = async (projectId) => {
     if (!user) {
-      toast.error('You must be logged in to star a project.');
+      toast.error('You must be logged in to star a codepad.');
       navigate('/login');
       return;
     }
@@ -88,7 +88,7 @@ const PublicProfile = () => {
 
       toast.success(response.data.message);
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to star project');
+      toast.error(error.response?.data?.message || 'Failed to star codepad');
     }
   };
 
@@ -102,7 +102,7 @@ const PublicProfile = () => {
       <div className="glass-panel flex flex-col sm:flex-row items-start gap-8 p-8 sm:p-12 mb-12">
         <div className="shrink-0">
           {profile.avatarUrl ? (
-            <img src={profile.avatarUrl} alt={profile.username} className="w-[120px] h-[120px] rounded-full object-cover border-4 border-primary shadow-[0_8px_24px_rgba(99,102,241,0.4)]" />
+            <img src={profile.avatarUrl} alt={profile.username} referrerpolicy="no-referrer" className="w-[120px] h-[120px] rounded-full object-cover border-4 border-primary shadow-[0_8px_24px_rgba(99,102,241,0.4)]" />
           ) : (
             <div className="w-[120px] h-[120px] rounded-full bg-input flex items-center justify-center border-4 border-primary text-muted shadow-[0_8px_24px_rgba(99,102,241,0.4)]">
               <UserIcon size={48} />
@@ -120,7 +120,7 @@ const PublicProfile = () => {
 
       {/* Projects Section */}
       <div>
-        <h2 className="text-2xl mb-6 border-b border-white/10 pb-3 font-bold">Public Projects ({projects.length})</h2>
+        <h2 className="text-2xl mb-6 border-b border-white/10 pb-3 font-bold">Public CodePads ({projects.length})</h2>
         
         {projects.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -179,7 +179,7 @@ const PublicProfile = () => {
           </div>
         ) : (
           <div className="glass-panel p-12 text-center text-muted">
-            <p>@{profile.username} doesn't have any public projects yet.</p>
+            <p>@{profile.username} doesn't have any public codepads yet.</p>
           </div>
         )}
       </div>

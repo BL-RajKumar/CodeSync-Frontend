@@ -38,16 +38,18 @@ const AdminLayout = () => {
       icon: Code,
       description: 'Manage sandbox compilation runtimes'
     },
+    /*
     {
       path: '/admin/broadcasts',
       label: 'Broadcasts',
       icon: Megaphone,
       description: 'Send global alerts to all users'
     }
+    */
   ];
 
   return (
-    <div className="min-h-[calc(100vh-80px)] bg-transparent text-main flex flex-col lg:flex-row font-sans max-w-7xl mx-auto px-4 md:px-8 pb-12 gap-8">
+    <div className="min-h-[calc(100vh-80px)] w-full bg-transparent text-main flex flex-col lg:flex-row font-sans px-4 md:px-6 pb-6 gap-6">
       
       {/* Admin Panel Left Sidebar */}
       <aside className="w-full lg:w-64 shrink-0 flex flex-col gap-4">
@@ -86,9 +88,9 @@ const AdminLayout = () => {
                   }`} 
                 />
                 <div className="truncate">
-                  <span className="text-xs block leading-tight">{item.label}</span>
-                  <span className={`text-[0.6rem] block font-normal truncate max-w-[170px] mt-0.5 ${
-                    isActive ? 'text-white/70' : 'text-muted/70'
+                  <span className={`text-xs block leading-tight ${isActive ? 'text-white font-bold' : ''}`}>{item.label}</span>
+                  <span className={`text-[0.65rem] block truncate max-w-[170px] mt-0.5 ${
+                    isActive ? 'text-indigo-100 font-medium' : 'text-muted font-normal'
                   }`}>
                     {item.description}
                   </span>

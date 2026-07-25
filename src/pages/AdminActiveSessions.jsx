@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { toast } from 'react-hot-toast';
+import { toast } from 'react-toastify';
 import { ShieldAlert, Loader2, Link2, Users, Calendar, Folder, FileCode, Radio, XCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -44,8 +44,8 @@ const AdminActiveSessions = () => {
   }, []);
 
   return (
-    <div className="w-full text-main font-sans p-6 md:p-10 h-full overflow-y-auto">
-      <div className="max-w-7xl mx-auto space-y-8 animate-fade-in">
+    <div className="w-full text-main font-sans p-6 md:p-8 h-full overflow-y-auto">
+      <div className="w-full space-y-8 animate-fade-in">
         
         {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-6">
@@ -123,7 +123,7 @@ const AdminActiveSessions = () => {
                   {/* Host User Info */}
                   <div className="flex items-center gap-3 bg-white/2 p-3 rounded-xl border border-white/5">
                     {session.ownerId?.avatarUrl ? (
-                      <img src={session.ownerId.avatarUrl} alt="Host Avatar" className="w-9 h-9 rounded-full object-cover border border-white/10" />
+                      <img src={session.ownerId.avatarUrl} alt="Host Avatar" referrerpolicy="no-referrer" className="w-9 h-9 rounded-full object-cover border border-white/10" />
                     ) : (
                       <div className="w-9 h-9 rounded-full bg-[#131324] border border-white/10 flex items-center justify-center text-muted font-bold text-xs uppercase">
                         {session.ownerId?.username?.charAt(0) || 'H'}

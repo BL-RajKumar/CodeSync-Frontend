@@ -161,6 +161,7 @@ const UserSearchInput = ({
                   <img 
                     src={u.avatarUrl || 'https://via.placeholder.com/30'} 
                     alt={u.username}
+                    referrerpolicy="no-referrer"
                     className="w-5 h-5 rounded-full object-cover"
                   />
                   <div className="flex-1 overflow-hidden">

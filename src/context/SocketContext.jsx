@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
-import { toast } from 'react-hot-toast';
+import { toast } from 'react-toastify';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 
@@ -21,6 +21,7 @@ export const SocketProvider = ({ children }) => {
 
   useEffect(() => {
     const guestUsername = sessionParam ? sessionStorage.getItem(`collab_guest_name_${sessionParam}`) : null;
+    const guestEmail = sessionParam ? (sessionStorage.getItem(`collab_guest_email_${sessionParam}`) || '') : '';
     const guestUserId = sessionParam ? sessionStorage.getItem(`collab_guest_uid_${sessionParam}`) : null;
     const sessionPassword = sessionParam ? (sessionStorage.getItem(`collab_pw_${sessionParam}`) || '') : '';
 
@@ -47,6 +48,7 @@ export const SocketProvider = ({ children }) => {
       auth: {
         token: document.cookie.match(/jwt=([^;]+)/)?.[1] || '',
         guestUsername: guestUsername || '',
+        guestEmail: guestEmail || '',
         guestUserId: guestUserId || '',
         sessionId: sessionParam || '',
         sessionPassword: sessionPassword || '',

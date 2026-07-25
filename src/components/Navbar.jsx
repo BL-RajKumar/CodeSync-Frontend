@@ -6,7 +6,7 @@ import { useSocket } from '../context/SocketContext';
 import { useTheme } from '../context/ThemeContext';
 import { LogOut, Code2, User as UserIcon, Search, Bell, ChevronDown, Sun, Moon } from 'lucide-react';
 import axios from 'axios';
-import { toast } from 'react-hot-toast';
+import { toast } from 'react-toastify';
 import NotificationDropdown from './NotificationDropdown';
 
 const Navbar = () => {
@@ -66,7 +66,7 @@ const Navbar = () => {
             <div className="flex items-start">
               <div className="shrink-0 pt-0.5">
                 {notification.actorId?.avatarUrl ? (
-                  <img className="h-10 w-10 rounded-full object-cover" src={notification.actorId.avatarUrl} alt="Actor" />
+                  <img className="h-10 w-10 rounded-full object-cover" src={notification.actorId.avatarUrl} referrerpolicy="no-referrer" alt="Actor" />
                 ) : (
                   <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
                     {notification.actorId?.username?.charAt(0).toUpperCase()}
@@ -181,28 +181,41 @@ const Navbar = () => {
     <nav className="sticky top-0 z-50 py-2 mb-8 glass-panel !rounded-none !border-x-0 !border-t-0">
       <div className="container mx-auto px-8 grid grid-cols-[auto_1fr_auto] items-center gap-8">
         <Link to="/" className="flex items-center gap-3 group">
-          <img 
-            src="/logo.png" 
-            alt="BridgeLabz Logo" 
-            className="h-10 w-auto object-contain transition-transform duration-300 group-hover:scale-[1.03] select-none dark-mode-logo-glow" 
-          />
+          <div className="flex flex-col items-center justify-center transition-transform duration-300 group-hover:scale-[1.03] select-none py-0.5">
+            {/* Top Icon: Original untouched colors */}
+            <div className="h-[23px] overflow-hidden flex items-start">
+              <img src="/logo.png" alt="BridgeLabz Logo Icon" className="h-[42px] w-auto max-w-none" />
+            </div>
+            {/* Bottom Text: White outlined text in dark mode */}
+            <div className="h-[18px] overflow-hidden flex items-end">
+              <img 
+                src="/logo.png" 
+                alt="BridgeLabz Text" 
+                className="h-[42px] w-auto max-w-none -mt-[24px] logo-text-outline" 
+              />
+            </div>
+          </div>
           <span className="text-2xl font-black bg-gradient-to-r from-[#6366f1] to-[#10b981] bg-clip-text text-transparent tracking-tight hover:brightness-110 transition-all duration-300 select-none">
             CodeSync
           </span>
         </Link>
         
-        <form onSubmit={handleSearch} className="max-w-[400px] w-full">
-          <div className="relative flex items-center">
-            <Search className="absolute left-3 text-muted" size={16} />
-            <input 
-              type="text" 
-              placeholder="Search developers..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-input border border-white/10 rounded-full py-2 pr-4 pl-10 text-main text-sm transition-all duration-150 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 placeholder-white/30"
-            />
-          </div>
-        </form>
+        {user ? (
+          <form onSubmit={handleSearch} className="max-w-[400px] w-full">
+            <div className="relative flex items-center">
+              <Search className="absolute left-3 text-muted" size={16} />
+              <input 
+                type="text" 
+                placeholder="Search developers..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-input border border-white/10 rounded-full py-2 pr-4 pl-10 text-main text-sm transition-all duration-150 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 placeholder-white/30"
+              />
+            </div>
+          </form>
+        ) : (
+          <div />
+        )}
 
         <div className="flex items-center gap-6">
           <Link to="/explore" className="text-muted font-medium hover:text-main transition-colors duration-150">Explore</Link>
@@ -304,7 +317,7 @@ const Navbar = () => {
 
                 <Link to="/profile" className="flex items-center gap-2 text-main font-medium hover:text-primary transition-colors duration-150">
                   {user.avatarUrl ? (
-                    <img src={user.avatarUrl} alt="Avatar" className="w-8 h-8 rounded-full object-cover border border-white/10" />
+                    <img src={user.avatarUrl} alt="Avatar" referrerpolicy="no-referrer" className="w-8 h-8 rounded-full object-cover border border-white/10" />
                   ) : (
                     <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center border border-primary/20 text-xs font-bold text-primary shrink-0">
                       {user.username?.charAt(0).toUpperCase()}
