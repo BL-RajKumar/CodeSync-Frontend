@@ -22,7 +22,7 @@ const AdminActiveSessions = () => {
   };
 
   const handleTerminateSession = async (sessionId) => {
-    if (!window.confirm(`Are you sure you want to forcibly terminate collaboration session "${sessionId}"? All connected developers will be disconnected.`)) {
+    if (!window.confirm(`Are you sure you want to forcibly terminate collaboration session "${sessionId}"? All connected users will be disconnected.`)) {
       return;
     }
 
@@ -77,7 +77,7 @@ const AdminActiveSessions = () => {
           <div className="text-center py-20 text-muted bg-white/5 border border-white/10 rounded-2xl">
             <Radio size={48} className="mx-auto text-white/10 mb-4 animate-pulse" />
             <p className="text-lg font-medium text-white/60">No active sessions at the moment</p>
-            <p className="text-xs text-white/20 mt-1">When developers start sharing code, their live channels will show up here.</p>
+            <p className="text-xs text-white/20 mt-1">When users start sharing code, their live channels will show up here.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

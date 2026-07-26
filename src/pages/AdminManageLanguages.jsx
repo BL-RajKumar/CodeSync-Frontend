@@ -233,7 +233,7 @@ const AdminManageLanguages = () => {
                   </div>
 
                   {/* Description */}
-                  <p className="text-xs text-muted leading-relaxed line-clamp-2 h-8" title={lang.description}>
+                  <p className="text-xs text-muted leading-relaxed line-clamp-2 h-10" title={lang.description}>
                     {lang.description || 'No description provided.'}
                   </p>
                 </div>
@@ -312,7 +312,7 @@ const AdminManageLanguages = () => {
                       placeholder="e.g. 93"
                       value={formId}
                       onChange={(e) => setFormId(e.target.value)}
-                      className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4.5 py-2.5 text-sm text-main focus:outline-none focus:border-primary placeholder-white/20"
+                      className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-main focus:outline-none focus:border-primary placeholder-white/20"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -323,7 +323,7 @@ const AdminManageLanguages = () => {
                       placeholder="e.g. javascript"
                       value={formName}
                       onChange={(e) => setFormName(e.target.value)}
-                      className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4.5 py-2.5 text-sm text-main focus:outline-none focus:border-primary placeholder-white/20"
+                      className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-main focus:outline-none focus:border-primary placeholder-white/20"
                     />
                   </div>
                 </div>
@@ -338,7 +338,7 @@ const AdminManageLanguages = () => {
                       placeholder="e.g. JavaScript"
                       value={formDisplayName}
                       onChange={(e) => setFormDisplayName(e.target.value)}
-                      className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4.5 py-2.5 text-sm text-main focus:outline-none focus:border-primary placeholder-white/20"
+                      className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-main focus:outline-none focus:border-primary placeholder-white/20"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -348,7 +348,7 @@ const AdminManageLanguages = () => {
                       placeholder="e.g. Node.js 18.15.0"
                       value={formVersion}
                       onChange={(e) => setFormVersion(e.target.value)}
-                      className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4.5 py-2.5 text-sm text-main focus:outline-none focus:border-primary placeholder-white/20"
+                      className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-main focus:outline-none focus:border-primary placeholder-white/20"
                     />
                   </div>
                 </div>
@@ -360,7 +360,7 @@ const AdminManageLanguages = () => {
                     <select
                       value={formCategory}
                       onChange={(e) => setFormCategory(e.target.value)}
-                      className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4.5 py-2.5 text-sm text-main focus:outline-none focus:border-primary"
+                      className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-main focus:outline-none focus:border-primary"
                     >
                       <option value="Scripting">Scripting</option>
                       <option value="Compiled (Native)">Compiled (Native)</option>
@@ -376,7 +376,7 @@ const AdminManageLanguages = () => {
                       placeholder="e.g. .js, .jsx"
                       value={formExtensions}
                       onChange={(e) => setFormExtensions(e.target.value)}
-                      className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4.5 py-2.5 text-sm text-main focus:outline-none focus:border-primary placeholder-white/20"
+                      className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-main focus:outline-none focus:border-primary placeholder-white/20"
                     />
                   </div>
                 </div>
@@ -390,7 +390,7 @@ const AdminManageLanguages = () => {
                       placeholder="e.g. js, jsx"
                       value={formAliases}
                       onChange={(e) => setFormAliases(e.target.value)}
-                      className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4.5 py-2.5 text-sm text-main focus:outline-none focus:border-primary placeholder-white/20"
+                      className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-main focus:outline-none focus:border-primary placeholder-white/20"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -421,7 +421,7 @@ const AdminManageLanguages = () => {
                     rows="2"
                     value={formDescription}
                     onChange={(e) => setFormDescription(e.target.value)}
-                    className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4.5 py-2.5 text-sm text-main focus:outline-none focus:border-primary placeholder-white/20 resize-none"
+                    className="w-full bg-[#16162a] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-main focus:outline-none focus:border-primary placeholder-white/20 resize-none"
                   />
                 </div>
 
@@ -448,13 +448,13 @@ const AdminManageLanguages = () => {
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="px-4.5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+                    className="px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-semibold transition-all cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="flex items-center gap-1 px-4.5 py-2.5 bg-primary hover:bg-primary-hover border border-primary/20 rounded-xl text-xs font-semibold text-white transition-all shadow-lg shadow-primary/25 cursor-pointer"
+                    className="flex items-center gap-1 px-4 py-2.5 bg-primary hover:bg-primary-hover border border-primary/20 rounded-xl text-xs font-semibold text-white transition-all shadow-lg shadow-primary/25 cursor-pointer"
                   >
                     <Check size={14} />
                     Save Settings

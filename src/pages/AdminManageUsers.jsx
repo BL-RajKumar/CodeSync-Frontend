@@ -91,6 +91,22 @@ const AdminManageUsers = () => {
     }
   };
 
+  const handleRoleChange = async (userId, newRole) => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const res = await axios.put(`${apiUrl}/admin/users/${userId}/role`, { role: newRole }, { withCredentials: true });
+      
+      // Update local state dynamically
+      setUsers((prev) => 
+        prev.map((u) => (u.userId || u._id) === userId ? { ...u, role: res.data.user.role } : u)
+      );
+
+      toast.success(res.data.message);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update user role');
+    }
+  };
+
   const handleDeleteUser = async () => {
     if (!deleteTarget) return;
 
@@ -199,7 +215,8 @@ const AdminManageUsers = () => {
                   className="w-full bg-[#131324]/50 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all duration-200 appearance-none text-muted"
                 >
                   <option value="">All Roles</option>
-                  <option value="Developer">Developer</option>
+                  <option value="Candidate">Candidate</option>
+                  <option value="Employee">Employee</option>
                   <option value="Guest">Guest</option>
                   <option value="Admin">Admin</option>
                 </select>
@@ -275,17 +292,28 @@ const AdminManageUsers = () => {
                             })}
                           </td>
 
-                          {/* Role Badge */}
+                          {/* Role Selector */}
                           <td className="px-6 py-4">
-                            <span className={`px-2.5 py-1 rounded-md text-xs font-medium border ${
-                              user.role === 'Admin' 
-                                ? 'bg-rose-500/10 border-rose-500/20 text-rose-400' 
-                                : user.role === 'Guest'
-                                ? 'bg-teal-500/10 border-teal-500/20 text-teal-400'
-                                : 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400'
-                            }`}>
-                              {user.role}
-                            </span>
+                            <select
+                              value={user.role}
+                              onChange={(e) => handleRoleChange(user.userId || user._id, e.target.value)}
+                              className={`px-2.5 py-1 rounded-md text-xs font-semibold border bg-input text-main transition-colors duration-150 cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/50 ${
+                                user.role === 'Admin'
+                                  ? 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+                                  : user.role === 'Employee'
+                                  ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400'
+                                  : user.role === 'Candidate'
+                                  ? 'bg-teal-500/10 border-teal-500/20 text-teal-400'
+                                  : 'bg-white/5 border-white/10 text-muted'
+                              }`}
+                            >
+                              <option value="Candidate" className="bg-[#131324] text-teal-400">Candidate</option>
+                              <option value="Employee" className="bg-[#131324] text-indigo-400">Employee</option>
+                              <option value="Admin" className="bg-[#131324] text-rose-400">Admin</option>
+                              {user.role === 'Guest' && (
+                                <option value="Guest" className="bg-[#131324] text-muted">Guest</option>
+                              )}
+                            </select>
                           </td>
 
                           {/* Status Badge */}

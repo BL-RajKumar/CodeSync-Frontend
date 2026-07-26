@@ -58,7 +58,7 @@ const AdminBroadcasts = () => {
               <Radio size={24} className="text-primary animate-pulse" />
             </h1>
             <p className="text-muted text-sm mt-1">
-              Dispatch real-time announcements, alerts, and system notices to all currently connected developers.
+              Dispatch real-time announcements, alerts, and system notices to all currently connected users.
             </p>
           </div>
           <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-xs font-semibold text-primary shadow-lg backdrop-blur-md">
@@ -131,7 +131,7 @@ const AdminBroadcasts = () => {
                   placeholder="e.g. Scheduled Maintenance Notice"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full bg-[#131324]/50 border border-white/10 rounded-xl px-4.5 py-3 text-sm text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all placeholder-white/20 font-medium"
+                  className="w-full bg-[#131324]/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all placeholder-white/20 font-medium"
                 />
               </div>
 
@@ -143,7 +143,7 @@ const AdminBroadcasts = () => {
                   rows="5"
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  className="w-full bg-[#131324]/50 border border-white/10 rounded-xl px-4.5 py-3 text-sm text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all placeholder-white/20 resize-none font-medium leading-relaxed"
+                  className="w-full bg-[#131324]/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all placeholder-white/20 resize-none font-medium leading-relaxed"
                 />
               </div>
 

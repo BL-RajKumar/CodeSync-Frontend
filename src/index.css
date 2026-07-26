@@ -5,11 +5,11 @@
 @tailwind utilities;
 
 :root {
-  --bg-dark: #0f1115;
-  --bg-card: rgba(26, 29, 36, 0.6);
-  --bg-input: rgba(15, 17, 21, 0.8);
-  --color-border: rgba(255, 255, 255, 0.15);
-  --color-border-focus: #4F46E5;
+  --bg-dark: #070913; /* Elegant deep indigo midnight */
+  --bg-card: rgba(16, 20, 38, 0.65); /* Premium glassmorphic navy slate card */
+  --bg-input: rgba(7, 9, 19, 0.85); /* Deep midnight input fields */
+  --color-border: rgba(255, 255, 255, 0.12);
+  --color-border-focus: #6366F1;
   --text-main: #f8f9fa;
   --text-muted: #9ca3af;
   
@@ -18,11 +18,11 @@
   --color-danger-rgb: 239, 68, 68;
   --color-success-rgb: 16, 185, 129;
 
-  --bg-gradient: radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.08), transparent 25%),
-                  radial-gradient(circle at 85% 30%, rgba(16, 185, 129, 0.05), transparent 25%);
-  --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
-  --scrollbar-thumb: rgba(255, 255, 255, 0.1);
-  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.2);
+  --bg-gradient: radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.14), transparent 45%),
+                  radial-gradient(circle at 85% 30%, rgba(16, 185, 129, 0.08), transparent 40%);
+  --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.12);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.22);
 }
 
 :root[data-theme="light"], html[data-theme="light"] {

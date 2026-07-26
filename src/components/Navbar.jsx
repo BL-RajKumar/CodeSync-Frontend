@@ -206,7 +206,7 @@ const Navbar = () => {
               <Search className="absolute left-3 text-muted" size={16} />
               <input 
                 type="text" 
-                placeholder="Search developers..." 
+                placeholder="Search candidates/employees..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-input border border-white/10 rounded-full py-2 pr-4 pl-10 text-main text-sm transition-all duration-150 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 placeholder-white/30"
@@ -277,13 +277,6 @@ const Navbar = () => {
                         className="block px-4 py-2 text-xs font-semibold text-muted hover:text-main hover:bg-white/5 transition-colors"
                       >
                         Sandbox Languages
-                      </Link>
-                      <Link 
-                        to="/admin/broadcasts" 
-                        onClick={() => setAdminDropdownOpen(false)}
-                        className="block px-4 py-2 text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors border-t border-white/5"
-                      >
-                        Send Broadcast
                       </Link>
                     </div>
                   )}
