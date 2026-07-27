@@ -347,7 +347,7 @@ const HighlightAll = ({ text }) => <>{text}</>;
 /* ═══════════════════════════════════════════════
    Main SandboxPanel
 ═══════════════════════════════════════════════ */
-const SandboxPanel = ({ file, codeRef }) => {
+const SandboxPanel = ({ file, codeRef, runTrigger }) => {
   const [language,     setLanguage]     = useState(() => detectLanguage(file?.path));
   const [stdin,        setStdin]        = useState('');
   const [isRunning,    setIsRunning]    = useState(false);
@@ -435,6 +435,14 @@ const SandboxPanel = ({ file, codeRef }) => {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [handleRun, handleCancel, isRunning]);
+
+  const lastRunTrigger = useRef(0);
+  useEffect(() => {
+    if (runTrigger !== undefined && runTrigger > 0 && runTrigger !== lastRunTrigger.current) {
+      lastRunTrigger.current = runTrigger;
+      handleRun();
+    }
+  }, [runTrigger, handleRun]);
 
   const handleClear = () => { setOutput(null); setStdin(''); setIsCancelled(false); };
   const stdinActive = stdin.trim().length > 0;

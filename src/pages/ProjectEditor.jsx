@@ -33,6 +33,12 @@ const ProjectEditor = () => {
   const [sidebarTab, setSidebarTab] = useState('files'); // 'files' | 'search' | 'snapshots' | 'run' | 'comments'
   const [scrollToLine, setScrollToLine] = useState(null);
   const [diffModalState, setDiffModalState] = useState({ isOpen: false, snapshot: null });
+  const [runTrigger, setRunTrigger] = useState(0);
+
+  const handleRunCode = useCallback(() => {
+    setSidebarTab('run');
+    setRunTrigger(prev => prev + 1);
+  }, []);
 
   // Chat & Notes state
   const [messages, setMessages] = useState([]);
@@ -1262,7 +1268,7 @@ const ProjectEditor = () => {
             />
           )}
           {sidebarTab === 'run' && (
-            <SandboxPanel file={selectedFile} codeRef={codeRef} />
+            <SandboxPanel file={selectedFile} codeRef={codeRef} runTrigger={runTrigger} />
           )}
           {sidebarTab === 'snapshots' && (
             <SnapshotPanel 
@@ -1360,7 +1366,7 @@ const ProjectEditor = () => {
                 onKickParticipant={handleKickParticipant}
                 shareLink={shareLink}
                 isStartingCollab={isStartingCollab}
-                onOpenSandbox={isWebProject ? undefined : () => setSidebarTab('run')}
+                onOpenSandbox={isWebProject ? undefined : handleRunCode}
                 projectId={projectId}
                 currentUser={user}
                 snapshotId={selectedFile?.snapshotId || null}

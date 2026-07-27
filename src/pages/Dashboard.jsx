@@ -5,6 +5,7 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import { Code, Star, GitFork, Trash2, Calendar } from 'lucide-react';
 import CreateProjectModal from '../components/CreateProjectModal';
+import DeleteConfirmModal from '../components/DeleteConfirmModal';
 import { LanguageIcon, getLanguageLabel } from '../components/LanguageIcon';
 
 const formatDate = (dateString) => {
@@ -99,19 +100,24 @@ const Dashboard = () => {
     }
   };
 
-  const handleDeleteProject = async (projectId) => {
-    if (!window.confirm('Are you sure you want to delete this codepad? This action cannot be undone and will delete all associated files.')) {
-      return;
-    }
+  const [projectToDelete, setProjectToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDeleteProject = async () => {
+    if (!projectToDelete) return;
+    setDeleting(true);
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      await axios.delete(`${apiUrl}/projects/${projectId}`, {
+      await axios.delete(`${apiUrl}/projects/${projectToDelete}`, {
         withCredentials: true
       });
-      setProjects(prev => prev.filter(p => p.projectId !== projectId && p._id !== projectId));
+      setProjects(prev => prev.filter(p => p.projectId !== projectToDelete && p._id !== projectToDelete));
       toast.success('Code pad deleted successfully');
+      setProjectToDelete(null);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to delete codepad');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -194,7 +200,7 @@ const Dashboard = () => {
                             {project.visibility}
                           </span>
                           <button 
-                            onClick={() => handleDeleteProject(project.projectId || project._id)}
+                            onClick={() => setProjectToDelete(project.projectId || project._id)}
                             className="text-muted hover:text-red-400 p-1 rounded-md transition-colors"
                             title="Delete CodePad"
                           >
@@ -289,6 +295,15 @@ const Dashboard = () => {
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleCreateProject}
         loading={creating}
+      />
+
+      <DeleteConfirmModal
+        isOpen={!!projectToDelete}
+        onClose={() => setProjectToDelete(null)}
+        onConfirm={handleDeleteProject}
+        title="Delete CodePad"
+        message="Are you sure you want to delete this codepad? This action cannot be undone and will delete all associated files."
+        loading={deleting}
       />
     </>
   );
