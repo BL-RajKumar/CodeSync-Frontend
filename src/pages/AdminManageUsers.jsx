@@ -216,7 +216,7 @@ const AdminManageUsers = () => {
                 >
                   <option value="">All Roles</option>
                   <option value="Candidate">Candidate</option>
-                  <option value="Employee">Employee</option>
+                  <option value="Interviewer">Interviewer</option>
                   <option value="Guest">Guest</option>
                   <option value="Admin">Admin</option>
                 </select>
@@ -300,7 +300,7 @@ const AdminManageUsers = () => {
                               className={`px-2.5 py-1 rounded-md text-xs font-semibold border bg-input text-main transition-colors duration-150 cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/50 ${
                                 user.role === 'Admin'
                                   ? 'bg-rose-500/10 border-rose-500/20 text-rose-400'
-                                  : user.role === 'Employee'
+                                  : user.role === 'Employee' || user.role === 'Interviewer'
                                   ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400'
                                   : user.role === 'Candidate'
                                   ? 'bg-teal-500/10 border-teal-500/20 text-teal-400'
@@ -308,7 +308,7 @@ const AdminManageUsers = () => {
                               }`}
                             >
                               <option value="Candidate" className="bg-[#131324] text-teal-400">Candidate</option>
-                              <option value="Employee" className="bg-[#131324] text-indigo-400">Employee</option>
+                              <option value="Interviewer" className="bg-[#131324] text-indigo-400">Interviewer</option>
                               <option value="Admin" className="bg-[#131324] text-rose-400">Admin</option>
                               {user.role === 'Guest' && (
                                 <option value="Guest" className="bg-[#131324] text-muted">Guest</option>

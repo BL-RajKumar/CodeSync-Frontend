@@ -206,7 +206,7 @@ const Navbar = () => {
               <Search className="absolute left-3 text-muted" size={16} />
               <input 
                 type="text" 
-                placeholder="Search candidates/employees..." 
+                placeholder="Search candidates/interviewers..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-input border border-white/10 rounded-full py-2 pr-4 pl-10 text-main text-sm transition-all duration-150 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 placeholder-white/30"

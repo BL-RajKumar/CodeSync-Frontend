@@ -200,7 +200,7 @@ const AdminAnalytics = () => {
           <div className="bg-white/5 border border-white/10 rounded-2xl p-6 relative backdrop-blur-lg shadow-xl overflow-hidden group">
             <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/10 rounded-bl-full blur-2xl group-hover:bg-indigo-500/20 transition-all duration-300" />
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-muted uppercase tracking-wider">Repositories</span>
+              <span className="text-xs font-bold text-muted uppercase tracking-wider">Codepads</span>
               <div className="p-2.5 rounded-xl bg-indigo-500/15 text-indigo-400">
                 <Folder size={16} />
               </div>
