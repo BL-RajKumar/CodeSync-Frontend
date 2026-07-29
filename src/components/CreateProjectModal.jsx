@@ -37,10 +37,13 @@ const CreateProjectModal = ({ isOpen, onClose, onSubmit, loading }) => {
 
   return createPortal(
     <div className="fixed inset-0 w-screen h-screen bg-black/60 backdrop-blur-sm flex items-center justify-center z-[1000] animate-fade-in">
-      <div className="w-full max-w-[500px] p-8 glass-panel shadow-[0_20px_60px_rgba(0,0,0,0.5)]">
+      <div className="w-full max-w-[500px] p-8 bg-gradient-to-br from-[#f4f5fc] via-[#f9faff] to-[#e5e9fd] border border-indigo-200/80 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.25)] relative">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-main m-0">Create New CodePad</h2>
-          <button onClick={onClose} className="bg-transparent border-none text-muted cursor-pointer p-2 rounded-xl flex items-center justify-center transition-all duration-150 hover:bg-white/10 hover:text-main">
+          <h2 className="text-2xl font-bold text-[#1e1b4b] m-0">Create New CodePad</h2>
+          <button 
+            onClick={onClose} 
+            className="text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 p-1.5 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
+          >
             <X size={20} />
           </button>
         </div>
@@ -53,13 +56,14 @@ const CreateProjectModal = ({ isOpen, onClose, onSubmit, loading }) => {
             value={formData.name}
             onChange={handleChange}
             required
+            isLight={true}
           />
 
           <div className="mb-5 w-full">
-            <label className="block text-sm font-medium text-muted mb-2">Description (Optional)</label>
+            <label className="block text-sm font-medium text-[#312e81] mb-2">Description (Optional)</label>
             <textarea
               name="description"
-              className="w-full bg-input border border-white/10 rounded-xl py-3 px-4 text-main font-sans text-base transition-all duration-150 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 placeholder-white/20 resize-y"
+              className="w-full bg-white border border-indigo-200 rounded-xl py-3 px-4 text-slate-900 font-sans text-base transition-all duration-150 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 placeholder-slate-400 resize-y shadow-sm"
               placeholder="What is this codepad about?"
               value={formData.description}
               onChange={handleChange}
@@ -69,10 +73,10 @@ const CreateProjectModal = ({ isOpen, onClose, onSubmit, loading }) => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
             <div className="mb-5 w-full">
-              <label className="block text-sm font-medium text-muted mb-2">Language</label>
+              <label className="block text-sm font-medium text-[#312e81] mb-2">Language</label>
               <select 
                 name="language" 
-                className="w-full bg-input border border-white/10 rounded-xl py-3 px-4 text-main font-sans text-base transition-all duration-150 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 cursor-pointer" 
+                className="w-full bg-white border border-indigo-200 rounded-xl py-3 px-4 text-slate-900 font-sans text-base transition-all duration-150 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 cursor-pointer shadow-sm" 
                 value={formData.language} 
                 onChange={handleChange}
               >
@@ -83,10 +87,10 @@ const CreateProjectModal = ({ isOpen, onClose, onSubmit, loading }) => {
             </div>
 
             <div className="mb-5 w-full">
-              <label className="block text-sm font-medium text-muted mb-2">Visibility</label>
+              <label className="block text-sm font-medium text-[#312e81] mb-2">Visibility</label>
               <select 
                 name="visibility" 
-                className="w-full bg-input border border-white/10 rounded-xl py-3 px-4 text-main font-sans text-base transition-all duration-150 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 cursor-pointer" 
+                className="w-full bg-white border border-indigo-200 rounded-xl py-3 px-4 text-slate-900 font-sans text-base transition-all duration-150 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 cursor-pointer shadow-sm" 
                 value={formData.visibility} 
                 onChange={handleChange}
               >
@@ -96,8 +100,15 @@ const CreateProjectModal = ({ isOpen, onClose, onSubmit, loading }) => {
             </div>
           </div>
 
-          <div className="flex justify-end gap-4 mt-2 pt-6 border-t border-white/10">
-            <Button variant="secondary" onClick={onClose} disabled={loading}>Cancel</Button>
+          <div className="flex justify-end gap-4 mt-2 pt-6 border-t border-indigo-200/60">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={loading}
+              className="px-5 py-3 bg-slate-200 hover:bg-slate-300/80 border border-slate-300 rounded-xl text-sm font-semibold text-slate-700 transition-all cursor-pointer disabled:opacity-50"
+            >
+              Cancel
+            </button>
             <Button type="submit" variant="primary" disabled={loading}>
               {loading ? 'Creating...' : 'Create CodePad'}
             </Button>

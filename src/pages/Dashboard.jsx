@@ -86,6 +86,33 @@ const Dashboard = () => {
     }
   };
 
+  const handlePlayground = async () => {
+    const existingPlayground = projects.find(p => p.name === 'Playground');
+    if (existingPlayground) {
+      navigate(`/p/${existingPlayground.projectId || existingPlayground._id}`);
+      return;
+    }
+    
+    setCreating(true);
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const res = await axios.post(`${apiUrl}/projects`, {
+        name: 'Playground',
+        description: 'Quick scratchpad for running code',
+        language: 'javascript',
+        visibility: 'Private'
+      }, {
+        withCredentials: true
+      });
+      toast.success('Playground opened');
+      navigate(`/p/${res.data.projectId || res.data._id}`);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to open playground');
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const handleUnstar = async (projectId) => {
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -136,9 +163,18 @@ const Dashboard = () => {
             <Link to="/profile" className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-base transition-all duration-150 bg-white/5 text-main border border-white/10 hover:bg-white/10">
               Edit Profile
             </Link>
-            <button className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-base transition-all duration-150 bg-primary text-white shadow-[0_4px_14px_0_rgba(99,102,241,0.39)] hover:bg-primary-hover hover:-translate-y-[1px] hover:shadow-[0_6px_20px_rgba(99,102,241,0.4)]" onClick={() => setIsModalOpen(true)}>
-              New CodePad
+            <button 
+              onClick={handlePlayground}
+              disabled={creating}
+              className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-base transition-all duration-150 bg-violet-600/15 border border-violet-500/40 text-violet-500 hover:bg-violet-600/25 hover:border-violet-500/60 hover:-translate-y-[1px] disabled:opacity-50"
+            >
+              Playground
             </button>
+            {user && ['Admin', 'Interviewer', 'Employee'].includes(user.role) && (
+              <button className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-base transition-all duration-150 bg-primary text-white shadow-[0_4px_14px_0_rgba(99,102,241,0.39)] hover:bg-primary-hover hover:-translate-y-[1px] hover:shadow-[0_6px_20px_rgba(99,102,241,0.4)]" onClick={() => setIsModalOpen(true)}>
+                Create Codepad
+              </button>
+            )}
           </div>
         </div>
 
