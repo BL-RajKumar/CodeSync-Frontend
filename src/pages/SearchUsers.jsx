@@ -63,7 +63,7 @@ const SearchUsers = () => {
       ) : (
         <div className="glass-panel text-center py-16 px-8">
           <Search size={48} className="text-muted mb-4 opacity-50 mx-auto" />
-          <h2 className="text-2xl mb-2 font-bold">No developers found</h2>
+          <h2 className="text-2xl mb-2 font-bold">No users found</h2>
           <p className="text-muted">We couldn't find anyone matching "{query}".</p>
         </div>
       )}

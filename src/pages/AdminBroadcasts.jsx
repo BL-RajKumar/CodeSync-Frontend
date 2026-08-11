@@ -51,17 +51,17 @@ const AdminBroadcasts = () => {
       <div className="w-full space-y-8 animate-fade-in">
         
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-6">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-indigo-400 bg-clip-text text-transparent flex items-center gap-2">
+            <h1 className="text-3xl font-bold tracking-tight text-main flex items-center gap-2">
               Platform Broadcasts
               <Radio size={24} className="text-primary animate-pulse" />
             </h1>
             <p className="text-muted text-sm mt-1">
-              Dispatch real-time announcements, alerts, and system notices to all currently connected developers.
+              Dispatch real-time announcements, alerts, and system notices to all currently connected users.
             </p>
           </div>
-          <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-xs font-semibold text-primary shadow-lg backdrop-blur-md">
+          <div className="flex items-center gap-2 bg-white/5 border border-border rounded-xl px-4 py-2 text-xs font-semibold text-primary shadow-sm backdrop-blur-md">
             <ShieldAlert size={14} />
             Administrator Mode Active
           </div>
@@ -70,8 +70,8 @@ const AdminBroadcasts = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           
           {/* Composer Form */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-lg shadow-xl h-fit">
-            <h2 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+          <div className="bg-card border border-border rounded-2xl p-6 backdrop-blur-lg shadow-sm h-fit">
+            <h2 className="text-lg font-bold text-main mb-6 flex items-center gap-2">
               <MessageSquare size={18} className="text-primary" />
               Compose Message
             </h2>
@@ -87,8 +87,8 @@ const AdminBroadcasts = () => {
                     onClick={() => setType('info')}
                     className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all duration-200 cursor-pointer ${
                       type === 'info' 
-                        ? 'bg-blue-500/20 border-blue-500/40 text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.15)]' 
-                        : 'bg-[#131324] border-white/5 text-muted hover:bg-white/5'
+                        ? 'bg-blue-500/20 border-blue-500/40 text-blue-400 shadow-sm' 
+                        : 'bg-input border-border text-muted hover:bg-white/5'
                     }`}
                   >
                     <Info size={20} className="mb-2" />
@@ -100,8 +100,8 @@ const AdminBroadcasts = () => {
                     onClick={() => setType('warning')}
                     className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all duration-200 cursor-pointer ${
                       type === 'warning' 
-                        ? 'bg-amber-500/20 border-amber-500/40 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.15)]' 
-                        : 'bg-[#131324] border-white/5 text-muted hover:bg-white/5'
+                        ? 'bg-amber-500/20 border-amber-500/40 text-amber-400 shadow-sm' 
+                        : 'bg-input border-border text-muted hover:bg-white/5'
                     }`}
                   >
                     <AlertTriangle size={20} className="mb-2" />
@@ -113,8 +113,8 @@ const AdminBroadcasts = () => {
                     onClick={() => setType('critical')}
                     className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all duration-200 cursor-pointer ${
                       type === 'critical' 
-                        ? 'bg-rose-500/20 border-rose-500/40 text-rose-400 shadow-[0_0_15px_rgba(225,29,72,0.15)]' 
-                        : 'bg-[#131324] border-white/5 text-muted hover:bg-white/5'
+                        ? 'bg-rose-500/20 border-rose-500/40 text-rose-400 shadow-sm' 
+                        : 'bg-input border-border text-muted hover:bg-white/5'
                     }`}
                   >
                     <AlertOctagon size={20} className="mb-2" />
@@ -131,7 +131,7 @@ const AdminBroadcasts = () => {
                   placeholder="e.g. Scheduled Maintenance Notice"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full bg-[#131324]/50 border border-white/10 rounded-xl px-4.5 py-3 text-sm text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all placeholder-white/20 font-medium"
+                  className="w-full bg-input border border-border rounded-xl px-4 py-3 text-sm text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all placeholder-zinc-500 font-medium"
                 />
               </div>
 
@@ -143,7 +143,7 @@ const AdminBroadcasts = () => {
                   rows="5"
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  className="w-full bg-[#131324]/50 border border-white/10 rounded-xl px-4.5 py-3 text-sm text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all placeholder-white/20 resize-none font-medium leading-relaxed"
+                  className="w-full bg-input border border-border rounded-xl px-4 py-3 text-sm text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all placeholder-zinc-500 resize-none font-medium leading-relaxed"
                 />
               </div>
 
@@ -152,10 +152,10 @@ const AdminBroadcasts = () => {
                 <button
                   type="submit"
                   disabled={isSending || !title.trim() || !message.trim()}
-                  className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold transition-all shadow-lg text-white ${
-                    type === 'info' ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/20' :
-                    type === 'warning' ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-500/20' :
-                    'bg-rose-600 hover:bg-rose-700 shadow-rose-500/20 animate-pulse-slow'
+                  className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold transition-all shadow-sm text-white ${
+                    type === 'info' ? 'bg-blue-600 hover:bg-blue-700' :
+                    type === 'warning' ? 'bg-amber-600 hover:bg-amber-700' :
+                    'bg-rose-600 hover:bg-rose-700 animate-pulse-slow'
                   } disabled:opacity-50 disabled:pointer-events-none cursor-pointer`}
                 >
                   <Send size={18} className={isSending ? 'animate-bounce' : ''} />
@@ -167,7 +167,7 @@ const AdminBroadcasts = () => {
           </div>
 
           {/* Live Preview Panel */}
-          <div className="bg-[#10101c] border border-white/5 rounded-2xl p-6 shadow-inner h-fit flex flex-col justify-center items-center relative overflow-hidden group">
+          <div className="bg-card border border-border rounded-2xl p-6 shadow-sm h-fit flex flex-col justify-center items-center relative overflow-hidden group">
             
             <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none"></div>
             
@@ -175,10 +175,10 @@ const AdminBroadcasts = () => {
               <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-6 text-center">Live User View Preview</h3>
               
               {/* Mock Toast Popup */}
-              <div className={`p-4 rounded-2xl shadow-2xl border transition-all duration-300 ${
-                type === 'info' ? 'bg-blue-950/40 border-blue-500/30 shadow-[0_10px_30px_rgba(59,130,246,0.15)]' :
-                type === 'warning' ? 'bg-amber-950/40 border-amber-500/30 shadow-[0_10px_30px_rgba(245,158,11,0.15)]' :
-                'bg-rose-950/40 border-rose-500/30 shadow-[0_10px_30px_rgba(225,29,72,0.15)]'
+              <div className={`p-4 rounded-2xl shadow-md border transition-all duration-300 ${
+                type === 'info' ? 'bg-blue-950/40 border-blue-500/30' :
+                type === 'warning' ? 'bg-amber-950/40 border-amber-500/30' :
+                'bg-rose-950/40 border-rose-500/30'
               }`}>
                 <div className="flex gap-3">
                   <div className={`shrink-0 mt-0.5 ${
@@ -191,10 +191,10 @@ const AdminBroadcasts = () => {
                     {type === 'critical' && <AlertOctagon size={22} />}
                   </div>
                   <div className="flex-1">
-                    <h4 className="text-sm font-bold text-white mb-1">
+                    <h4 className="text-sm font-bold text-main mb-1">
                       {title.trim() || 'Announcement Title'}
                     </h4>
-                    <p className="text-[0.8rem] text-white/70 leading-relaxed break-words">
+                    <p className="text-[0.8rem] text-main leading-relaxed break-words">
                       {message.trim() || 'The contents of the broadcast message will appear here for all online users to read immediately.'}
                     </p>
                   </div>
@@ -202,7 +202,7 @@ const AdminBroadcasts = () => {
               </div>
             </div>
 
-            <p className="text-[0.65rem] text-white/30 text-center relative z-10 max-w-xs mt-4">
+            <p className="text-[0.65rem] text-muted text-center relative z-10 max-w-xs mt-4">
               Note: This broadcast operates via WebSockets. It will be delivered instantly to all users currently connected to the platform.
             </p>
 

@@ -47,8 +47,8 @@ const ForgotPassword = () => {
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-500/10 text-emerald-500 mb-2">
               <CheckCircle2 size={36} />
             </div>
-            <div className="p-4 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-300">
-              Check your email <span className="font-semibold text-white">{email}</span> for instructions to reset your password.
+            <div className="p-4 rounded-xl bg-white/5 border border-white/10 text-sm text-muted">
+              Check your email <span className="font-semibold text-main">{email}</span> for instructions to reset your password.
             </div>
             <Button variant="secondary" fullWidth onClick={() => setEmailSent(false)}>
               Send Again
