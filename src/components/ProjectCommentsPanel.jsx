@@ -20,7 +20,7 @@ const ProjectCommentsPanel = ({ projectId, currentUser, files, onFileSelect }) =
       const res = await axios.get(`${API}/comments/project/${projectId}${params}`, { withCredentials: true });
       setComments(res.data);
     } catch (e) {
-      toast.error('Failed to load project comments');
+      toast.error('Failed to load codepad comments');
     } finally {
       setLoading(false);
     }
@@ -48,7 +48,7 @@ const ProjectCommentsPanel = ({ projectId, currentUser, files, onFileSelect }) =
       <div className="p-4 border-b border-white/5">
         <div className="flex items-center gap-2 mb-3">
           <MessageSquare className="text-primary" size={18} />
-          <h3 className="font-semibold text-main">Project Comments</h3>
+          <h3 className="font-semibold text-main">CodePad Comments</h3>
         </div>
 
         {/* Filter Tabs */}

@@ -1135,21 +1135,23 @@ const ProjectEditor = () => {
           >
             <MessageSquare size={18} />
           </button>
-          <button
-            id="sidebar-tab-chat"
-            onClick={() => setSidebarTab('chat')}
-            className={`p-2.5 rounded-lg transition-all duration-150 relative ${
-              sidebarTab === 'chat' 
-                ? 'text-primary bg-white/5 shadow-[inset_2px_0_0_0_#6366f1]' 
-                : 'text-muted hover:text-main hover:bg-white/5'
-            }`}
-            title="Chat & Notes"
-          >
-            <MessageCircle size={18} />
-            {unreadChatCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full border border-[#181825]" />
-            )}
-          </button>
+          {!project?.isPlayground && (
+            <button
+              id="sidebar-tab-chat"
+              onClick={() => setSidebarTab('chat')}
+              className={`p-2.5 rounded-lg transition-all duration-150 relative ${
+                sidebarTab === 'chat' 
+                  ? 'text-primary bg-white/5 shadow-[inset_2px_0_0_0_#6366f1]' 
+                  : 'text-muted hover:text-main hover:bg-white/5'
+              }`}
+              title="Chat & Notes"
+            >
+              <MessageCircle size={18} />
+              {unreadChatCount > 0 && (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full border border-[#181825]" />
+              )}
+            </button>
+          )}
           <button
             id="sidebar-tab-whiteboard"
             onClick={() => setSidebarTab('whiteboard')}
@@ -1373,6 +1375,7 @@ const ProjectEditor = () => {
                 codeRef={codeRef}
                 forceContentKey={contentResetKey}
                 onLocalChange={handleLocalChange}
+                isPlayground={project?.isPlayground}
               />
             </div>
           ) : (

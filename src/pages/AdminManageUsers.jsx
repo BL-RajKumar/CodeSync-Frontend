@@ -11,6 +11,12 @@ const AdminManageUsers = () => {
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [limit, setLimit] = useState(10);
+
   // Guest Logs state
   const [guestLogs, setGuestLogs] = useState([]);
   const [loadingGuests, setLoadingGuests] = useState(false);
@@ -31,13 +37,23 @@ const AdminManageUsers = () => {
     setIsLoading(true);
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      const params = {};
+      const params = {
+        page: currentPage,
+        limit
+      };
       if (search.trim()) params.search = search.trim();
       if (role) params.role = role;
       if (status) params.status = status;
 
       const res = await axios.get(`${apiUrl}/admin/users`, { params, withCredentials: true });
       setUsers(res.data.users || []);
+      if (res.data.pagination) {
+        setTotalUsers(res.data.pagination.total || 0);
+        setTotalPages(res.data.pagination.pages || 1);
+      } else {
+        setTotalUsers(res.data.users?.length || 0);
+        setTotalPages(1);
+      }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to retrieve users directory');
     } finally {
@@ -63,7 +79,12 @@ const AdminManageUsers = () => {
     fetchGuestLogs();
   }, []);
 
-  // Fetch users when search or filters change
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, role, status]);
+
+  // Fetch users when search, filters, or pagination changes
   useEffect(() => {
     if (activeTab === 'users') {
       const delayDebounce = setTimeout(() => {
@@ -73,7 +94,7 @@ const AdminManageUsers = () => {
     } else if (activeTab === 'guest_logs') {
       fetchGuestLogs();
     }
-  }, [search, role, status, activeTab]);
+  }, [search, role, status, activeTab, currentPage, limit]);
 
   const handleToggleSuspend = async (userId, username, currentStatus) => {
     try {
@@ -86,6 +107,7 @@ const AdminManageUsers = () => {
       );
 
       toast.success(res.data.message);
+      fetchUsers();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to update user status');
     }
@@ -102,6 +124,7 @@ const AdminManageUsers = () => {
       );
 
       toast.success(res.data.message);
+      fetchUsers();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to update user role');
     }
@@ -118,6 +141,7 @@ const AdminManageUsers = () => {
       toast.success(`User "${deleteTarget.username}" deleted successfully`);
       setUsers((prev) => prev.filter((u) => (u.userId || u._id) !== deleteTarget.userId));
       setDeleteTarget(null);
+      fetchUsers();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to delete user');
     } finally {
@@ -149,39 +173,39 @@ const AdminManageUsers = () => {
       <div className="w-full space-y-8 animate-fade-in">
         
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-6">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-indigo-400 bg-clip-text text-transparent">
+            <h1 className="text-3xl font-bold tracking-tight text-main">
               Users Directory
             </h1>
             <p className="text-muted text-sm mt-1">
               Admin Control Panel for user accounts, role authorizations, suspensions, and removals.
             </p>
           </div>
-          <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-xs font-semibold text-primary shadow-lg backdrop-blur-md">
+          <div className="flex items-center gap-2 bg-white/5 border border-border rounded-xl px-4 py-2 text-xs font-semibold text-primary shadow-sm backdrop-blur-md">
             <ShieldAlert size={14} />
             Administrator Mode Active
           </div>
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex items-center gap-3 border-b border-white/10 pb-4">
+        <div className="flex items-center gap-3 border-b border-border pb-4">
           <button
             onClick={() => setActiveTab('users')}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all duration-200 cursor-pointer ${
               activeTab === 'users'
-                ? 'bg-primary text-white shadow-[0_4px_16px_rgba(99,102,241,0.35)]'
+                ? 'bg-primary text-white shadow-sm'
                 : 'bg-white/5 text-muted hover:bg-white/10 hover:text-main'
             }`}
           >
             <Users size={16} />
-            <span>Registered Accounts ({users.length})</span>
+            <span>Registered Accounts ({totalUsers})</span>
           </button>
           <button
             onClick={() => setActiveTab('guest_logs')}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all duration-200 cursor-pointer ${
               activeTab === 'guest_logs'
-                ? 'bg-primary text-white shadow-[0_4px_16px_rgba(99,102,241,0.35)]'
+                ? 'bg-primary text-white shadow-sm'
                 : 'bg-white/5 text-muted hover:bg-white/10 hover:text-main'
             }`}
           >
@@ -217,7 +241,6 @@ const AdminManageUsers = () => {
                   <option value="">All Roles</option>
                   <option value="Candidate">Candidate</option>
                   <option value="Interviewer">Interviewer</option>
-                  <option value="Guest">Guest</option>
                   <option value="Admin">Admin</option>
                 </select>
               </div>
@@ -250,125 +273,202 @@ const AdminManageUsers = () => {
                   <p className="text-xs text-white/20 mt-1">Try relaxing search terms or filters.</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="border-b border-white/10 bg-white/5 text-muted text-xs font-semibold uppercase tracking-wider">
-                        <th className="px-6 py-4">User Info</th>
-                        <th className="px-6 py-4">Join Date</th>
-                        <th className="px-6 py-4">Role</th>
-                        <th className="px-6 py-4">Status</th>
-                        <th className="px-6 py-4">Provider</th>
-                        <th className="px-6 py-4 text-center">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                      {users.map((user) => (
-                        <tr key={user.userId || user._id} className="hover:bg-white/5 transition-colors duration-150 text-sm">
-                          
-                          {/* User Info (Avatar + Name) */}
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-3">
-                              {user.avatarUrl ? (
-                                <img src={user.avatarUrl} alt="Avatar" referrerpolicy="no-referrer" className="w-10 h-10 rounded-full object-cover border border-white/10" />
-                              ) : (
-                                <div className="w-10 h-10 rounded-full bg-[#131324] border border-white/10 flex items-center justify-center text-muted font-bold text-sm">
-                                  {user.fullName ? user.fullName.charAt(0).toUpperCase() : user.username.charAt(0).toUpperCase()}
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="border-b border-white/10 bg-white/5 text-muted text-xs font-semibold uppercase tracking-wider">
+                          <th className="px-6 py-4">User Info</th>
+                          <th className="px-6 py-4">Join Date</th>
+                          <th className="px-6 py-4">Role</th>
+                          <th className="px-6 py-4">Status</th>
+                          <th className="px-6 py-4">Provider</th>
+                          <th className="px-6 py-4 text-center">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {users.map((user) => (
+                          <tr key={user.userId || user._id} className="hover:bg-white/5 transition-colors duration-150 text-sm">
+                            
+                            {/* User Info (Avatar + Name) */}
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-3">
+                                {user.avatarUrl ? (
+                                  <img src={user.avatarUrl} alt="Avatar" referrerpolicy="no-referrer" className="w-10 h-10 rounded-full object-cover border border-white/10" />
+                                ) : (
+                                  <div className="w-10 h-10 rounded-full bg-[#131324] border border-white/10 flex items-center justify-center text-muted font-bold text-sm">
+                                    {user.fullName ? user.fullName.charAt(0).toUpperCase() : user.username.charAt(0).toUpperCase()}
+                                  </div>
+                                )}
+                                <div className="flex flex-col">
+                                  <span className="font-semibold text-main">{user.fullName || user.username}</span>
+                                  <span className="text-xs text-muted">@{user.username} &bull; {user.email}</span>
                                 </div>
-                              )}
-                              <div className="flex flex-col">
-                                <span className="font-semibold text-main">{user.fullName || user.username}</span>
-                                <span className="text-xs text-muted">@{user.username} &bull; {user.email}</span>
                               </div>
-                            </div>
-                          </td>
+                            </td>
 
-                          {/* Join Date */}
-                          <td className="px-6 py-4 text-xs text-muted">
-                            {new Date(user.createdAt).toLocaleDateString(undefined, {
-                              year: 'numeric',
-                              month: 'short',
-                              day: 'numeric'
-                            })}
-                          </td>
+                            {/* Join Date */}
+                            <td className="px-6 py-4 text-xs text-muted">
+                              {new Date(user.createdAt).toLocaleDateString(undefined, {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric'
+                              })}
+                            </td>
 
-                          {/* Role Selector */}
-                          <td className="px-6 py-4">
-                            <select
-                              value={user.role}
-                              onChange={(e) => handleRoleChange(user.userId || user._id, e.target.value)}
-                              className={`px-2.5 py-1 rounded-md text-xs font-semibold border bg-input text-main transition-colors duration-150 cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/50 ${
-                                user.role === 'Admin'
-                                  ? 'bg-rose-500/10 border-rose-500/20 text-rose-400'
-                                  : user.role === 'Employee' || user.role === 'Interviewer'
-                                  ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400'
-                                  : user.role === 'Candidate'
-                                  ? 'bg-teal-500/10 border-teal-500/20 text-teal-400'
-                                  : 'bg-white/5 border-white/10 text-muted'
+                            {/* Role Selector */}
+                             <td className="px-6 py-4">
+                              <select
+                                value={user.role}
+                                onChange={(e) => handleRoleChange(user.userId || user._id, e.target.value)}
+                                className={`px-2.5 py-1 rounded-md text-xs font-semibold border bg-input text-main transition-colors duration-150 cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/50 ${
+                                  user.role === 'Admin'
+                                    ? 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+                                    : user.role === 'Employee' || user.role === 'Interviewer'
+                                    ? 'bg-primary/10 border-primary/20 text-primary'
+                                    : user.role === 'Candidate'
+                                    ? 'bg-teal-500/10 border-teal-500/20 text-teal-400'
+                                    : 'bg-white/5 border-border text-muted'
+                                }`}
+                              >
+                                <option value="Candidate" className="bg-card text-teal-400">Candidate</option>
+                                <option value="Interviewer" className="bg-card text-primary">Interviewer</option>
+                                <option value="Admin" className="bg-card text-rose-400">Admin</option>
+                                {user.role === 'Guest' && (
+                                  <option value="Guest" className="bg-card text-muted">Guest</option>
+                                )}
+                              </select>
+                            </td>
+
+                            {/* Status Badge */}
+                            <td className="px-6 py-4">
+                              <span className={`flex items-center gap-1.5 w-fit px-2.5 py-1 rounded-md text-xs font-semibold border ${
+                                user.isActive 
+                                  ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.1)]' 
+                                  : 'bg-rose-500/10 border-rose-500/20 text-rose-400 shadow-[0_0_12px_rgba(239,68,68,0.1)] animate-pulse'
+                              }`}>
+                                <span className={`h-1.5 w-1.5 rounded-full ${user.isActive ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+                                {user.isActive ? 'Active' : 'Suspended'}
+                              </span>
+                            </td>
+
+                            {/* Provider */}
+                            <td className="px-6 py-4">
+                              <span className="text-xs capitalize text-muted bg-[#131324] px-2 py-0.5 rounded border border-white/5">
+                                {user.provider}
+                              </span>
+                            </td>
+
+                            {/* Actions */}
+                            <td className="px-6 py-4">
+                              <div className="flex items-center justify-center gap-2">
+                                
+                                {/* Suspend / Active Toggle button */}
+                                <button
+                                  onClick={() => handleToggleSuspend(user.userId || user._id, user.username, user.isActive)}
+                                  className={`p-2 rounded-lg border transition-all duration-150 cursor-pointer flex items-center justify-center ${
+                                    user.isActive 
+                                      ? 'bg-rose-500/10 border-rose-500/20 text-rose-400 hover:bg-rose-500/20' 
+                                      : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20'
+                                  }`}
+                                  title={user.isActive ? "Suspend user account" : "Activate user account"}
+                                >
+                                  {user.isActive ? <UserX size={16} /> : <UserCheck size={16} />}
+                                </button>
+
+                                {/* Delete user button */}
+                                <button
+                                  onClick={() => setDeleteTarget({ userId: user.userId || user._id, username: user.username })}
+                                  className="p-2 rounded-lg bg-white/5 border border-white/10 text-muted hover:bg-rose-500/15 hover:border-rose-500/20 hover:text-rose-400 transition-all duration-150 cursor-pointer flex items-center justify-center"
+                                  title="Permanently delete user"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+
+                              </div>
+                            </td>
+
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Pagination Panel */}
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 md:p-6 border-t border-white/10 bg-white/5 text-sm">
+                    {/* Left Side: Page Size Selector & Indicators */}
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-muted text-xs font-medium">Show</span>
+                        <select
+                          value={limit}
+                          onChange={(e) => {
+                            setLimit(Number(e.target.value));
+                            setCurrentPage(1);
+                          }}
+                          className="bg-[#131324]/50 border border-white/10 rounded-lg py-1.5 px-3 text-xs focus:outline-none focus:border-primary transition-all duration-200 text-main cursor-pointer"
+                        >
+                          <option value={5} className="bg-[#131324]">5</option>
+                          <option value={10} className="bg-[#131324]">10</option>
+                          <option value={20} className="bg-[#131324]">20</option>
+                          <option value={50} className="bg-[#131324]">50</option>
+                        </select>
+                        <span className="text-muted text-xs font-medium">per page</span>
+                      </div>
+                      <div className="h-4 w-px bg-white/10 hidden sm:block" />
+                      <span className="text-muted text-xs font-medium">
+                        showing {totalUsers === 0 ? 0 : ((currentPage - 1) * limit) + 1} to {Math.min(currentPage * limit, totalUsers)} of {totalUsers} users
+                      </span>
+                    </div>
+
+                    {/* Right Side: Navigation buttons */}
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
+                        className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-all duration-200 cursor-pointer text-main text-xs font-semibold"
+                        title="Previous Page"
+                      >
+                        Prev
+                      </button>
+
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => {
+                        if (p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1) {
+                          return (
+                            <button
+                              key={p}
+                              onClick={() => setCurrentPage(p)}
+                              className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all duration-200 cursor-pointer ${
+                                currentPage === p
+                                  ? 'bg-primary border-primary text-white shadow-[0_2px_8px_rgba(99,102,241,0.4)]'
+                                  : 'border-white/10 bg-white/5 text-muted hover:bg-white/10 hover:text-main'
                               }`}
                             >
-                              <option value="Candidate" className="bg-[#131324] text-teal-400">Candidate</option>
-                              <option value="Interviewer" className="bg-[#131324] text-indigo-400">Interviewer</option>
-                              <option value="Admin" className="bg-[#131324] text-rose-400">Admin</option>
-                              {user.role === 'Guest' && (
-                                <option value="Guest" className="bg-[#131324] text-muted">Guest</option>
-                              )}
-                            </select>
-                          </td>
-
-                          {/* Status Badge */}
-                          <td className="px-6 py-4">
-                            <span className={`flex items-center gap-1.5 w-fit px-2.5 py-1 rounded-md text-xs font-semibold border ${
-                              user.isActive 
-                                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.1)]' 
-                                : 'bg-rose-500/10 border-rose-500/20 text-rose-400 shadow-[0_0_12px_rgba(239,68,68,0.1)] animate-pulse'
-                            }`}>
-                              <span className={`h-1.5 w-1.5 rounded-full ${user.isActive ? 'bg-emerald-400' : 'bg-rose-400'}`} />
-                              {user.isActive ? 'Active' : 'Suspended'}
+                              {p}
+                            </button>
+                          );
+                        }
+                        if (p === 2 || p === totalPages - 1) {
+                          return (
+                            <span key={p} className="px-1.5 text-muted text-xs">
+                              ...
                             </span>
-                          </td>
+                          );
+                        }
+                        return null;
+                      })}
 
-                          {/* Provider */}
-                          <td className="px-6 py-4">
-                            <span className="text-xs capitalize text-muted bg-[#131324] px-2 py-0.5 rounded border border-white/5">
-                              {user.provider}
-                            </span>
-                          </td>
-
-                          {/* Actions */}
-                          <td className="px-6 py-4">
-                            <div className="flex items-center justify-center gap-2">
-                              
-                              {/* Suspend / Active Toggle button */}
-                              <button
-                                onClick={() => handleToggleSuspend(user.userId || user._id, user.username, user.isActive)}
-                                className={`p-2 rounded-lg border transition-all duration-150 cursor-pointer flex items-center justify-center ${
-                                  user.isActive 
-                                    ? 'bg-rose-500/10 border-rose-500/20 text-rose-400 hover:bg-rose-500/20' 
-                                    : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20'
-                                }`}
-                                title={user.isActive ? "Suspend user account" : "Activate user account"}
-                              >
-                                {user.isActive ? <UserX size={16} /> : <UserCheck size={16} />}
-                              </button>
-
-                              {/* Delete user button */}
-                              <button
-                                onClick={() => setDeleteTarget({ userId: user.userId || user._id, username: user.username })}
-                                className="p-2 rounded-lg bg-white/5 border border-white/10 text-muted hover:bg-rose-500/15 hover:border-rose-500/20 hover:text-rose-400 transition-all duration-150 cursor-pointer flex items-center justify-center"
-                                title="Permanently delete user"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-
-                            </div>
-                          </td>
-
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        disabled={currentPage === totalPages}
+                        className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-all duration-200 cursor-pointer text-main text-xs font-semibold"
+                        title="Next Page"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           </>

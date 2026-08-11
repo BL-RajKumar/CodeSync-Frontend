@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import Input from '../components/Input';
-import Button from '../components/Button';
 import { Camera } from 'lucide-react';
 import { toast } from 'react-toastify';
 import axios from 'axios';
@@ -86,21 +84,28 @@ const Profile = () => {
   }
 
   return (
-    <div className="max-w-[800px] mx-auto mt-4 mb-4 px-4 sm:px-8 animate-fade-in">
-      <div className="glass-panel p-6 sm:p-8">
-        <h2 className="text-2xl mb-4 border-b border-white/10 pb-3 font-bold">Profile Settings</h2>
+    <div className="max-w-[700px] mx-auto mt-4 mb-4 px-4 sm:px-8 animate-fade-in">
+      <div className="bg-card border border-border rounded-xl p-6 sm:p-8 shadow-xl">
+        
+        {/* Header */}
+        <div className="flex justify-between items-center mb-6 pb-4 border-b border-border">
+          <div>
+            <h2 className="text-lg font-bold text-main m-0">Profile Settings</h2>
+            <p className="text-[10px] text-muted mt-0.5">Manage your personal identification, bio, and account credentials.</p>
+          </div>
+        </div>
         
         <div className="flex items-center gap-6 mb-6">
-          <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+          <div className="relative group cursor-pointer shrink-0" onClick={() => fileInputRef.current?.click()}>
             {formData.avatarUrl ? (
               <img 
                 src={formData.avatarUrl} 
                 alt="Avatar Preview" 
-                referrerpolicy="no-referrer"
-                className={`w-[80px] h-[80px] rounded-full object-cover border-2 border-primary transition-opacity ${uploadingImage ? 'opacity-50' : 'opacity-100 group-hover:opacity-75'}`} 
+                referrerPolicy="no-referrer"
+                className={`w-[80px] h-[80px] rounded-full object-cover border-2 border-primary/30 transition-opacity ${uploadingImage ? 'opacity-50' : 'opacity-100 group-hover:opacity-75'}`} 
               />
             ) : (
-              <div className={`w-[80px] h-[80px] rounded-full bg-primary/20 flex items-center justify-center border-2 border-primary text-2xl font-bold text-primary transition-opacity ${uploadingImage ? 'opacity-50' : 'opacity-100 group-hover:opacity-75'}`}>
+              <div className={`w-[80px] h-[80px] rounded-full bg-primary/20 flex items-center justify-center border-2 border-primary/30 text-2xl font-bold text-primary transition-opacity ${uploadingImage ? 'opacity-50' : 'opacity-100 group-hover:opacity-75'}`}>
                 {user.username?.charAt(0).toUpperCase()}
               </div>
             )}
@@ -121,59 +126,69 @@ const Profile = () => {
             />
           </div>
           <div>
-            <h3 className="text-xl mb-0.5 font-semibold">{user.username}</h3>
-            <p className="text-muted text-sm mb-2">{user.email} &bull; {user.role}</p>
+            <h3 className="text-base font-bold text-main mb-0.5">{user.username}</h3>
+            <p className="text-muted text-xs mb-2">{user.email} &bull; {user.role}</p>
             <span className={getBadgeClass(user.provider)}>{user.provider} account</span>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <form onSubmit={handleSubmit} className="flex flex-col space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block mb-1 text-muted text-xs font-semibold uppercase tracking-wider">Username</label>
-              <Input 
+              <label className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-1">Username</label>
+              <input 
+                type="text"
                 name="username"
+                required
                 value={formData.username}
                 onChange={handleChange}
-                required
+                className="w-full bg-[#091E42]/5 dark:bg-white/[0.04] border border-[#091E42]/10 dark:border-white/10 rounded-md px-3 py-2 text-sm text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 placeholder-zinc-600 shadow-sm transition-all"
               />
             </div>
             <div>
-              <label className="block mb-1 text-muted text-xs font-semibold uppercase tracking-wider">Full Name</label>
-              <Input 
+              <label className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-1">Full Name</label>
+              <input 
+                type="text"
                 name="fullName"
                 value={formData.fullName}
                 onChange={handleChange}
+                className="w-full bg-[#091E42]/5 dark:bg-white/[0.04] border border-[#091E42]/10 dark:border-white/10 rounded-md px-3 py-2 text-sm text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 placeholder-zinc-600 shadow-sm transition-all"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block mb-1 text-muted text-xs font-semibold uppercase tracking-wider">Bio</label>
+              <label className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-1">Bio</label>
               <textarea 
                 name="bio"
-                className="resize-none bg-input border border-white/10 rounded-xl py-2.5 px-4 text-main font-sans w-full focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 placeholder-white/20 h-[88px] text-sm"
+                rows="3"
                 value={formData.bio}
                 onChange={handleChange}
                 placeholder="Tell us about yourself..."
+                className="w-full bg-[#091E42]/5 dark:bg-white/[0.04] border border-[#091E42]/10 dark:border-white/10 rounded-md px-3 py-2 text-sm text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 placeholder-zinc-600 resize-none shadow-sm transition-all h-[92px]"
               />
             </div>
             <div className="flex flex-col justify-between gap-3">
               <div>
-                <label className="block mb-1 text-muted text-xs font-semibold uppercase tracking-wider">New Password (leave blank to keep current)</label>
-                <Input 
+                <label className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-1">New Password (leave blank to keep current)</label>
+                <input 
                   type="password"
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="New password..."
+                  className="w-full bg-[#091E42]/5 dark:bg-white/[0.04] border border-[#091E42]/10 dark:border-white/10 rounded-md px-3 py-2 text-sm text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 placeholder-zinc-600 shadow-sm transition-all"
                 />
               </div>
-              <div className="flex justify-end">
-                <Button type="submit" disabled={loading || uploadingImage} className="w-full md:w-auto">
+              <div className="flex justify-end mt-auto pt-2">
+                <button 
+                  type="submit" 
+                  disabled={loading || uploadingImage} 
+                  className="px-4 py-2 rounded-lg font-semibold text-xs bg-primary border border-primary/20 text-white hover:bg-primary-hover transition-colors shadow-sm cursor-pointer disabled:opacity-50 w-full md:w-auto"
+                >
                   {loading ? 'Saving...' : 'Save Changes'}
-                </Button>
+                </button>
               </div>
             </div>
           </div>

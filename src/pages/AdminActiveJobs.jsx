@@ -47,9 +47,9 @@ const AdminActiveJobs = () => {
       <div className="w-full space-y-8 animate-fade-in">
         
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-6">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-indigo-400 bg-clip-text text-transparent flex items-center gap-2">
+            <h1 className="text-3xl font-bold tracking-tight text-main flex items-center gap-2">
               Active Sandbox Jobs
               <span className="relative flex h-3 w-3">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
@@ -60,14 +60,14 @@ const AdminActiveJobs = () => {
               Live monitoring of all currently executing sandbox runs. Cancel runaway processes or infinite loops.
             </p>
           </div>
-          <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-xs font-semibold text-primary shadow-lg backdrop-blur-md">
+          <div className="flex items-center gap-2 bg-white/5 border border-border rounded-xl px-4 py-2 text-xs font-semibold text-primary shadow-sm backdrop-blur-md">
             <ShieldAlert size={14} />
             Administrator Mode Active
           </div>
         </div>
 
         {/* Jobs List */}
-        <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden shadow-2xl backdrop-blur-lg">
+        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm backdrop-blur-lg">
           {isLoading && jobs.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 gap-3 text-muted">
               <Loader2 size={36} className="animate-spin text-primary" />
@@ -75,15 +75,15 @@ const AdminActiveJobs = () => {
             </div>
           ) : jobs.length === 0 ? (
             <div className="text-center py-20 text-muted">
-              <Terminal size={48} className="mx-auto text-white/10 mb-4" />
-              <p className="text-lg font-medium text-white/60">No running sandbox jobs</p>
-              <p className="text-xs text-white/20 mt-1">Sandbox requests are typically quick, so this list is usually empty.</p>
+              <Terminal size={48} className="mx-auto text-muted/20 mb-4" />
+              <p className="text-lg font-medium text-main">No running sandbox jobs</p>
+              <p className="text-xs text-muted mt-1">Sandbox requests are typically quick, so this list is usually empty.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-white/10 bg-white/5 text-muted text-xs font-semibold uppercase tracking-wider">
+                  <tr className="border-b border-border bg-white/5 text-muted text-xs font-semibold uppercase tracking-wider">
                     <th className="px-6 py-4">Execution ID</th>
                     <th className="px-6 py-4">User</th>
                     <th className="px-6 py-4">Language</th>
@@ -92,7 +92,7 @@ const AdminActiveJobs = () => {
                     <th className="px-6 py-4 text-center">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
+                <tbody className="divide-y divide-border">
                   {jobs.map((job) => {
                     const uptimeSec = Math.round((new Date() - new Date(job.startedAt)) / 1000);
                     return (
@@ -109,7 +109,7 @@ const AdminActiveJobs = () => {
 
                         {/* Language */}
                         <td className="px-6 py-4">
-                          <span className="text-xs uppercase bg-[#131324] px-2.5 py-1 rounded border border-white/5 font-mono text-muted">
+                          <span className="text-xs uppercase bg-input px-2.5 py-1 rounded border border-border font-mono text-muted">
                             {job.language}
                           </span>
                         </td>

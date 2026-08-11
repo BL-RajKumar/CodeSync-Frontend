@@ -71,6 +71,7 @@ const CodeEditor = ({
   // Deliberately NOT bumped on auto-save to prevent cursor jumping
   forceContentKey = 0,
   onLocalChange,
+  isPlayground = false,
 }) => {
   const { theme: appTheme } = useTheme();
   const [content, setContent] = useState('');
@@ -839,7 +840,7 @@ const CodeEditor = ({
         
         <div className="flex items-center gap-3 overflow-x-auto scrollbar-thin flex-shrink-0 max-w-[70%] py-1">
           {/* Collaboration Bar */}
-          {!readOnly && (
+          {!readOnly && !isPlayground && (
             <div className="flex-shrink-0">
               <CollaborationBar
                 session={collabSession}

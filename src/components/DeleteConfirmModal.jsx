@@ -10,7 +10,7 @@ const DeleteConfirmModal = ({ isOpen, onClose, onConfirm, title = 'Delete CodePa
     <div className="fixed inset-0 w-screen h-screen bg-black/75 backdrop-blur-sm flex items-center justify-center z-[1000] animate-fade-in">
       <div className="w-full max-w-[440px] p-6 glass-panel border border-red-500/20 shadow-[0_20px_60px_rgba(0,0,0,0.6)] relative overflow-hidden">
         {/* Subtle top red glow accent */}
-        <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-red-500/0 via-red-500/40 to-red-500/0" />
+        <div className="absolute top-0 left-0 right-0 h-[3px] bg-red-500/30" />
 
         {/* Close Button */}
         <button 

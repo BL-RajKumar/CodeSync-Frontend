@@ -136,7 +136,7 @@ const ExploreProjects = () => {
   return (
     <div className="container mx-auto px-4 py-8 animate-fade-in mt-8 mb-16">
       <div className="mb-8 text-center">
-        <h1 className="text-[2.5rem] mb-2 font-bold bg-gradient-to-br from-primary to-[#818cf8] bg-clip-text text-transparent">Explore CodePads</h1>
+        <h1 className="text-[2.5rem] mb-2 font-bold text-main">Explore CodePads</h1>
         <p className="text-muted text-lg">discover open source codepads created by the community.</p>
       </div>
 

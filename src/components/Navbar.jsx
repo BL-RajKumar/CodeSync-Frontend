@@ -178,7 +178,7 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="sticky top-0 z-50 py-2 mb-8 glass-panel !rounded-none !border-x-0 !border-t-0">
+    <nav className="sticky top-0 z-50 py-2 mb-0 glass-panel !rounded-none !border-x-0 !border-t-0">
       <div className="container mx-auto px-8 grid grid-cols-[auto_1fr_auto] items-center gap-8">
         <Link to="/" className="flex items-center gap-3 group">
           <div className="flex flex-col items-center justify-center transition-transform duration-300 group-hover:scale-[1.03] select-none py-0.5">
@@ -195,7 +195,7 @@ const Navbar = () => {
               />
             </div>
           </div>
-          <span className="text-2xl font-black bg-gradient-to-r from-[#6366f1] to-[#10b981] bg-clip-text text-transparent tracking-tight hover:brightness-110 transition-all duration-300 select-none">
+          <span className="text-2xl font-black italic text-primary tracking-tight hover:opacity-90 transition-all duration-300 select-none">
             CodeSync
           </span>
         </Link>
@@ -242,7 +242,7 @@ const Navbar = () => {
                     <ChevronDown size={14} className={`transition-transform duration-150 ${adminDropdownOpen ? 'rotate-180' : ''}`} />
                   </button>
                   {adminDropdownOpen && (
-                    <div className="absolute top-full left-0 mt-2 w-48 bg-[#0f0f1c]/95 border border-white/10 rounded-xl shadow-xl backdrop-blur-md overflow-hidden animate-scale-up py-1 z-50">
+                    <div className="absolute top-full left-0 mt-2 w-48 bg-card border border-border rounded-xl shadow-xl backdrop-blur-md overflow-hidden animate-scale-up py-1 z-50">
                       <Link 
                         to="/admin/users" 
                         onClick={() => setAdminDropdownOpen(false)}

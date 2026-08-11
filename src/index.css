@@ -5,45 +5,43 @@
 @tailwind utilities;
 
 :root {
-  --bg-dark: #070913; /* Elegant deep indigo midnight */
-  --bg-card: rgba(16, 20, 38, 0.65); /* Premium glassmorphic navy slate card */
-  --bg-input: rgba(7, 9, 19, 0.85); /* Deep midnight input fields */
-  --color-border: rgba(255, 255, 255, 0.12);
-  --color-border-focus: #6366F1;
-  --text-main: #f8f9fa;
-  --text-muted: #9ca3af;
+  --bg-dark: #1D2125; /* Jira dark mode slate-charcoal */
+  --bg-card: #22272B; /* Jira dark mode card background */
+  --bg-input: #0F1214; /* Jira dark mode input background */
+  --color-border: #30363D; /* Subtler slate border */
+  --color-border-focus: #579DFF; /* Jira Light Blue accent */
+  --text-main: #C7D1DB; /* Ice blue-gray main text */
+  --text-muted: #8C9BAB; /* Steel gray muted text */
   
-  --color-primary-rgb: 99, 102, 241;
-  --color-primary-hover-rgb: 79, 70, 229;
+  --color-primary-rgb: 87, 157, 255; /* #579DFF */
+  --color-primary-hover-rgb: 133, 184, 255; /* #85B8FF */
   --color-danger-rgb: 239, 68, 68;
   --color-success-rgb: 16, 185, 129;
 
-  --bg-gradient: radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.14), transparent 45%),
-                  radial-gradient(circle at 85% 30%, rgba(16, 185, 129, 0.08), transparent 40%);
-  --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
-  --scrollbar-thumb: rgba(255, 255, 255, 0.12);
-  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.22);
+  --bg-gradient: linear-gradient(to bottom, #1D2125, #191c1f);
+  --shadow-glass: 0 8px 24px 0 rgba(0, 0, 0, 0.35);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.1);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.2);
 }
 
 :root[data-theme="light"], html[data-theme="light"] {
-  --bg-dark: #f0f2f8; /* Distinct premium light lavender-silver background */
-  --bg-card: rgba(246, 245, 252, 0.9); /* Gorgeous, soft lavender-white card background */
-  --bg-input: rgba(255, 255, 255, 0.95);
-  --color-border: rgba(139, 92, 246, 0.24); /* Violet-tinted borders */
-  --color-border-focus: #a855f7;
-  --text-main: #18181b; /* Sophisticated warm charcoal (Zinc-900) */
-  --text-muted: #52525b; /* Neutral-warm dark gray (Zinc-600) */
+  --bg-dark: #F4F5F7; /* Atlassian Light background */
+  --bg-card: #FFFFFF; /* White card background */
+  --bg-input: #FAFBFC; /* Very light slate-gray input background */
+  --color-border: #DFE1E6; /* Soft gray border */
+  --color-border-focus: #0052CC; /* Atlassian primary blue */
+  --text-main: #091E42; /* Deep slate dark charcoal */
+  --text-muted: #5E6C84; /* Mid steel-gray */
 
-  --color-primary-rgb: 124, 58, 237; /* Royal Purple instead of dark blue */
-  --color-primary-hover-rgb: 109, 40, 217;
+  --color-primary-rgb: 0, 82, 204; /* #0052CC */
+  --color-primary-hover-rgb: 0, 101, 255; /* #0065FF */
   --color-danger-rgb: 220, 38, 38;
   --color-success-rgb: 22, 163, 74;
 
-  --bg-gradient: radial-gradient(circle at 15% 50%, rgba(139, 92, 246, 0.06), transparent 30%),
-                  radial-gradient(circle at 85% 30%, rgba(16, 185, 129, 0.04), transparent 30%);
-  --shadow-glass: 0 8px 32px 0 rgba(139, 92, 246, 0.03);
-  --scrollbar-thumb: rgba(15, 23, 42, 0.1);
-  --scrollbar-thumb-hover: rgba(15, 23, 42, 0.2);
+  --bg-gradient: linear-gradient(to bottom, #F4F5F7, #ECEEF1);
+  --shadow-glass: 0 8px 24px 0 rgba(9, 30, 66, 0.08);
+  --scrollbar-thumb: rgba(9, 30, 66, 0.1);
+  --scrollbar-thumb-hover: rgba(9, 30, 66, 0.2);
 }
 
 @layer base {
@@ -212,12 +210,12 @@
   border-radius: 9999px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(99, 102, 241, 0.35); /* Visible indigo primary accent! */
+  background: rgba(var(--color-primary-rgb), 0.35); /* Visible primary accent! */
   border-radius: 9999px;
   border: 1px solid var(--color-border);
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(99, 102, 241, 0.6); /* Glowing indigo on hover */
+  background: rgba(var(--color-primary-rgb), 0.6); /* Glowing primary on hover */
 }
 
 /* ── Light Mode Color Overrides ── */
@@ -349,9 +347,9 @@
 .project-card {
   position: relative;
   overflow: hidden;
-  border-color: var(--color-border);
-  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.15);
-  background: linear-gradient(135deg, rgba(26, 29, 36, 0.4) 0%, rgba(26, 29, 36, 0.7) 100%) !important;
+  border-color: var(--color-border) !important;
+  box-shadow: var(--shadow-glass);
+  background: var(--bg-card) !important;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
@@ -362,7 +360,7 @@
   left: 0;
   width: 100%;
   height: 3px;
-  background: linear-gradient(90deg, #6366f1, #10b981); /* Brand gradient: Indigo to Emerald */
+  background: rgb(var(--color-primary-rgb)) !important;
   opacity: 0.8;
   transition: opacity 0.3s ease;
 }
@@ -371,20 +369,14 @@
   opacity: 1;
 }
 
-/* Light Theme overrides for Project Cards - making it look more colorful */
-[data-theme="light"] .project-card {
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.06) 0%, rgba(255, 255, 255, 0.96) 50%, rgba(16, 185, 129, 0.04) 100%) !important;
-  border-color: rgba(124, 58, 237, 0.16) !important;
-  box-shadow: 0 8px 24px -4px rgba(124, 58, 237, 0.06), 0 4px 12px -2px rgba(124, 58, 237, 0.04) !important;
-}
-
-[data-theme="light"] .project-card::before {
-  background: linear-gradient(90deg, #7c3aed, #10b981);
+.project-card:hover {
+  border-color: rgba(var(--color-primary-rgb), 0.5) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25);
 }
 
 [data-theme="light"] .project-card:hover {
-  border-color: rgba(124, 58, 237, 0.35) !important;
-  box-shadow: 0 16px 36px -4px rgba(124, 58, 237, 0.14), 0 8px 16px -6px rgba(124, 58, 237, 0.1) !important;
+  box-shadow: 0 12px 28px rgba(9, 30, 66, 0.12);
 }
 
 /* ── Visibility Chips ── */
@@ -400,30 +392,16 @@
   transition: all 0.2s ease;
 }
 
-/* Dark theme / default styling */
 .visibility-chip-public {
-  background-color: rgba(16, 185, 129, 0.1) !important;
-  color: #34d399 !important;
-  border: 1px solid rgba(16, 185, 129, 0.2) !important;
+  background-color: rgba(var(--color-success-rgb), 0.1) !important;
+  color: rgb(var(--color-success-rgb)) !important;
+  border: 1px solid rgba(var(--color-success-rgb), 0.2) !important;
 }
 
 .visibility-chip-private {
-  background-color: rgba(99, 102, 241, 0.1) !important;
-  color: #818cf8 !important;
-  border: 1px solid rgba(99, 102, 241, 0.2) !important;
-}
-
-/* Light theme overrides */
-[data-theme="light"] .visibility-chip-public {
-  background-color: rgba(22, 163, 74, 0.08) !important;
-  color: #15803d !important;
-  border: 1px solid rgba(22, 163, 74, 0.25) !important;
-}
-
-[data-theme="light"] .visibility-chip-private {
-  background-color: rgba(124, 58, 237, 0.08) !important;
-  color: #6d28d9 !important;
-  border: 1px solid rgba(124, 58, 237, 0.25) !important;
+  background-color: rgba(var(--color-primary-rgb), 0.1) !important;
+  color: rgb(var(--color-primary-rgb)) !important;
+  border: 1px solid rgba(var(--color-primary-rgb), 0.2) !important;
 }
 
 /* Custom thin scrollbar utility for narrow flex containers, similar to VS Code */
@@ -437,29 +415,29 @@
 
 /* Light theme overrides for Editor action buttons */
 [data-theme="light"] .run-start-btn {
-  background-color: rgba(124, 58, 237, 0.08) !important;
-  border-color: rgba(124, 58, 237, 0.25) !important;
-  color: #7c3aed !important;
+  background-color: rgba(var(--color-primary-rgb), 0.08) !important;
+  border-color: rgba(var(--color-primary-rgb), 0.25) !important;
+  color: rgb(var(--color-primary-rgb)) !important;
 }
 
 [data-theme="light"] .run-start-btn:hover {
-  background-color: rgba(124, 58, 237, 0.15) !important;
-  border-color: rgba(124, 58, 237, 0.45) !important;
+  background-color: rgba(var(--color-primary-rgb), 0.15) !important;
+  border-color: rgba(var(--color-primary-rgb), 0.45) !important;
 }
 
 [data-theme="light"] .play-icon-fill {
-  fill: #7c3aed !important;
+  fill: rgb(var(--color-primary-rgb)) !important;
 }
 
 [data-theme="light"] .collab-start-btn {
-  background-color: rgba(124, 58, 237, 0.08) !important;
-  border-color: rgba(124, 58, 237, 0.25) !important;
-  color: #7c3aed !important;
+  background-color: rgba(var(--color-primary-rgb), 0.08) !important;
+  border-color: rgba(var(--color-primary-rgb), 0.25) !important;
+  color: rgb(var(--color-primary-rgb)) !important;
 }
 
 [data-theme="light"] .collab-start-btn:hover {
-  background-color: rgba(124, 58, 237, 0.15) !important;
-  border-color: rgba(124, 58, 237, 0.45) !important;
+  background-color: rgba(var(--color-primary-rgb), 0.15) !important;
+  border-color: rgba(var(--color-primary-rgb), 0.45) !important;
 }
 
 /* Make ONLY the text portion of the logo pure white in dark mode */
@@ -470,6 +448,95 @@
 [data-theme="light"] .logo-text-outline {
   filter: none;
 }
+
+/* ── Dashboard Welcome Banner (Theme Aware & Smooth) ── */
+.dashboard-welcome-banner {
+  background: linear-gradient(135deg, #172B4D 0%, #1D2125 100%) !important;
+  border-color: var(--color-border) !important;
+  color: var(--text-main);
+}
+
+.dashboard-welcome-banner-bg {
+  opacity: 0.15 !important;
+  mix-blend-mode: overlay !important;
+}
+
+.dashboard-welcome-banner .welcome-title {
+  color: #ffffff !important;
+}
+
+.dashboard-welcome-banner .welcome-username {
+  color: #579DFF !important; /* Smooth light blue accent in dark mode */
+}
+
+.dashboard-welcome-banner .welcome-desc {
+  color: var(--text-muted) !important;
+}
+
+.welcome-btn-secondary {
+  @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-150;
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: #ffffff !important;
+}
+
+.welcome-btn-secondary:hover {
+  background-color: rgba(255, 255, 255, 0.18) !important;
+}
+
+.welcome-btn-primary {
+  @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-150;
+  background-color: rgb(var(--color-primary-rgb)) !important;
+  color: #ffffff !important;
+}
+
+.welcome-btn-primary:hover {
+  background-color: rgb(var(--color-primary-hover-rgb)) !important;
+}
+
+/* Light mode overrides (restored to original bright blue branding) */
+[data-theme="light"] .dashboard-welcome-banner {
+  background: #0B57D0 !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+}
+
+[data-theme="light"] .dashboard-welcome-banner-bg {
+  opacity: 0.35 !important;
+  mix-blend-mode: overlay !important;
+}
+
+[data-theme="light"] .dashboard-welcome-banner .welcome-title {
+  color: #ffffff !important;
+}
+
+[data-theme="light"] .dashboard-welcome-banner .welcome-username {
+  color: #bfdbfe !important;
+}
+
+[data-theme="light"] .dashboard-welcome-banner .welcome-desc {
+  color: #dbeafe !important;
+}
+
+[data-theme="light"] .welcome-btn-secondary {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+}
+
+[data-theme="light"] .welcome-btn-secondary:hover {
+  background-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+[data-theme="light"] .welcome-btn-primary {
+  background-color: #ffffff !important;
+  color: #0B57D0 !important;
+}
+
+[data-theme="light"] .welcome-btn-primary:hover {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+}
+
 
 
 
