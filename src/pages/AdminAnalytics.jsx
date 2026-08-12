@@ -149,9 +149,9 @@ const AdminAnalytics = () => {
       <div className="w-full space-y-8 animate-fade-in">
         
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-6">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-indigo-400 bg-clip-text text-transparent flex items-center gap-2">
+            <h1 className="text-3xl font-bold tracking-tight text-main flex items-center gap-2">
               Platform Analytics
               <Activity size={24} className="text-primary animate-pulse" />
             </h1>
@@ -163,12 +163,12 @@ const AdminAnalytics = () => {
             <button
               onClick={() => fetchAnalytics(true)}
               disabled={isRefreshing}
-              className="flex items-center gap-1.5 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-semibold hover:text-main transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+              className="flex items-center gap-1.5 px-4 py-2 bg-white/5 hover:bg-white/10 border border-border rounded-xl text-xs font-semibold hover:text-main transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
             >
               <RefreshCw size={12} className={isRefreshing ? 'animate-spin' : ''} />
               Refresh Metrics
             </button>
-            <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-xs font-semibold text-primary shadow-lg backdrop-blur-md">
+            <div className="flex items-center gap-2 bg-white/5 border border-border rounded-xl px-4 py-2 text-xs font-semibold text-primary shadow-sm backdrop-blur-md">
               <ShieldAlert size={14} />
               Administrator Mode
             </div>
@@ -197,18 +197,18 @@ const AdminAnalytics = () => {
           </div>
 
           {/* Projects Card */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 relative backdrop-blur-lg shadow-xl overflow-hidden group">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/10 rounded-bl-full blur-2xl group-hover:bg-indigo-500/20 transition-all duration-300" />
+          <div className="bg-white/5 border border-border rounded-2xl p-6 relative backdrop-blur-lg shadow-xl overflow-hidden group">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-primary/10 rounded-bl-full blur-2xl group-hover:bg-primary/20 transition-all duration-300" />
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-muted uppercase tracking-wider">Repositories</span>
-              <div className="p-2.5 rounded-xl bg-indigo-500/15 text-indigo-400">
+              <span className="text-xs font-bold text-muted uppercase tracking-wider">Codepads</span>
+              <div className="p-2.5 rounded-xl bg-primary/15 text-primary">
                 <Folder size={16} />
               </div>
             </div>
             <div className="mt-4">
               <h2 className="text-3xl font-bold font-mono text-main">{projects?.total}</h2>
               <div className="flex items-center gap-3 mt-2 text-xs text-muted">
-                <span className="text-indigo-500 font-semibold">{projects?.public} Public</span>
+                <span className="text-primary font-semibold">{projects?.public} Public</span>
                 <span className="text-muted">{projects?.private} Private</span>
                 <span className="text-muted/60">· {files?.total} Files</span>
               </div>
@@ -247,8 +247,11 @@ const AdminAnalytics = () => {
             </div>
             <div className="mt-4">
               <h2 className="text-3xl font-bold font-mono text-main">{executions?.total}</h2>
-              <div className="flex items-center gap-3 mt-2 text-xs text-muted">
+              <div className="flex items-center gap-3 mt-2 text-xs text-muted flex-wrap">
                 <span className="text-emerald-500 font-semibold">{executions?.successRate}% Success</span>
+                <span className="text-rose-500 font-semibold">
+                  {executions?.total > 0 ? 100 - (executions?.successRate ?? 0) : 0}% Failed
+                </span>
                 <span className="text-muted">{executions?.averageTimeMs}ms avg speed</span>
               </div>
             </div>
@@ -261,7 +264,7 @@ const AdminAnalytics = () => {
           {users?.timeline && (
             <SVGLineChart 
               data={users.timeline} 
-              color="#6366f1" 
+              color="rgb(var(--color-primary-rgb))" 
               title="Daily Registrations (7 Days)" 
               gradientId="userTimelineGrad" 
             />

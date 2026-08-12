@@ -33,6 +33,12 @@ const ProjectEditor = () => {
   const [sidebarTab, setSidebarTab] = useState('files'); // 'files' | 'search' | 'snapshots' | 'run' | 'comments'
   const [scrollToLine, setScrollToLine] = useState(null);
   const [diffModalState, setDiffModalState] = useState({ isOpen: false, snapshot: null });
+  const [runTrigger, setRunTrigger] = useState(0);
+
+  const handleRunCode = useCallback(() => {
+    setSidebarTab('run');
+    setRunTrigger(prev => prev + 1);
+  }, []);
 
   // Chat & Notes state
   const [messages, setMessages] = useState([]);
@@ -1138,21 +1144,23 @@ const ProjectEditor = () => {
           >
             <MessageSquare size={18} />
           </button>
-          <button
-            id="sidebar-tab-chat"
-            onClick={() => setSidebarTab('chat')}
-            className={`p-2.5 rounded-lg transition-all duration-150 relative ${
-              sidebarTab === 'chat' 
-                ? 'text-primary bg-white/5 shadow-[inset_2px_0_0_0_#6366f1]' 
-                : 'text-muted hover:text-main hover:bg-white/5'
-            }`}
-            title="Chat & Notes"
-          >
-            <MessageCircle size={18} />
-            {unreadChatCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full border border-[#181825]" />
-            )}
-          </button>
+          {!project?.isPlayground && (
+            <button
+              id="sidebar-tab-chat"
+              onClick={() => setSidebarTab('chat')}
+              className={`p-2.5 rounded-lg transition-all duration-150 relative ${
+                sidebarTab === 'chat' 
+                  ? 'text-primary bg-white/5 shadow-[inset_2px_0_0_0_#6366f1]' 
+                  : 'text-muted hover:text-main hover:bg-white/5'
+              }`}
+              title="Chat & Notes"
+            >
+              <MessageCircle size={18} />
+              {unreadChatCount > 0 && (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full border border-[#181825]" />
+              )}
+            </button>
+          )}
           <button
             id="sidebar-tab-whiteboard"
             onClick={() => setSidebarTab('whiteboard')}
@@ -1271,7 +1279,7 @@ const ProjectEditor = () => {
             />
           )}
           {sidebarTab === 'run' && (
-            <SandboxPanel file={selectedFile} codeRef={codeRef} />
+            <SandboxPanel file={selectedFile} codeRef={codeRef} runTrigger={runTrigger} />
           )}
           {sidebarTab === 'snapshots' && (
             <SnapshotPanel 
@@ -1369,13 +1377,14 @@ const ProjectEditor = () => {
                 onKickParticipant={handleKickParticipant}
                 shareLink={shareLink}
                 isStartingCollab={isStartingCollab}
-                onOpenSandbox={isWebProject ? undefined : () => setSidebarTab('run')}
+                onOpenSandbox={isWebProject ? undefined : handleRunCode}
                 projectId={projectId}
                 currentUser={user}
                 snapshotId={selectedFile?.snapshotId || null}
                 codeRef={codeRef}
                 forceContentKey={contentResetKey}
                 onLocalChange={handleLocalChange}
+                isPlayground={project?.isPlayground}
               />
             </div>
           ) : (

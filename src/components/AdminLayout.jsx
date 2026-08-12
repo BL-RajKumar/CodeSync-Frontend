@@ -55,7 +55,7 @@ const AdminLayout = () => {
       <aside className="w-full lg:w-64 shrink-0 flex flex-col gap-4">
         
         {/* Navigation panel header */}
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-5 flex items-center gap-3 backdrop-blur-lg">
+        <div className="bg-card border border-border rounded-2xl p-5 flex items-center gap-3 backdrop-blur-lg">
           <div className="p-2 bg-primary/10 border border-primary/20 rounded-xl text-primary flex items-center justify-center">
             <ShieldAlert size={18} />
           </div>
@@ -66,7 +66,7 @@ const AdminLayout = () => {
         </div>
 
         {/* Sidebar Links */}
-        <nav className="bg-white/5 border border-white/10 rounded-2xl p-3 flex flex-col gap-1 backdrop-blur-lg">
+        <nav className="bg-card border border-border rounded-2xl p-3 flex flex-col gap-1 backdrop-blur-lg">
           {navigationItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
@@ -77,20 +77,24 @@ const AdminLayout = () => {
                 to={item.path}
                 className={`flex items-center gap-3.5 px-4 py-3 rounded-xl transition-all duration-200 group text-left ${
                   isActive 
-                    ? 'bg-primary text-white shadow-lg shadow-primary/25 font-semibold' 
-                    : 'text-muted hover:text-main hover:bg-white/5 font-medium'
+                    ? 'bg-primary/10 shadow-sm font-semibold' 
+                    : 'hover:bg-black/5 dark:hover:bg-white/5 font-medium'
                 }`}
               >
                 <Icon 
                   size={18} 
                   className={`shrink-0 transition-transform group-hover:scale-110 ${
-                    isActive ? 'text-white' : 'text-muted group-hover:text-primary'
+                    isActive ? 'text-primary' : 'text-muted group-hover:text-primary'
                   }`} 
                 />
                 <div className="truncate">
-                  <span className={`text-xs block leading-tight ${isActive ? 'text-white font-bold' : ''}`}>{item.label}</span>
+                  <span className={`text-xs block leading-tight ${
+                    isActive ? 'text-primary font-bold' : 'text-main font-semibold group-hover:text-primary transition-colors'
+                  }`}>
+                    {item.label}
+                  </span>
                   <span className={`text-[0.65rem] block truncate max-w-[170px] mt-0.5 ${
-                    isActive ? 'text-indigo-100 font-medium' : 'text-muted font-normal'
+                    isActive ? 'text-main opacity-80 font-medium' : 'text-muted font-normal group-hover:text-main transition-colors'
                   }`}>
                     {item.description}
                   </span>
@@ -101,7 +105,7 @@ const AdminLayout = () => {
         </nav>
 
         {/* Console info footer */}
-        <div className="hidden lg:block bg-gradient-to-br from-primary/10 to-indigo-900/10 border border-white/5 rounded-2xl p-5 backdrop-blur-lg">
+        <div className="hidden lg:block bg-card border border-border rounded-2xl p-5 backdrop-blur-lg">
           <span className="text-[0.65rem] font-bold text-primary tracking-wide uppercase">Sandbox Engine Status</span>
           <div className="flex items-center gap-2 mt-2">
             <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -115,7 +119,7 @@ const AdminLayout = () => {
       </aside>
 
       {/* Main Administrative Context Panel */}
-      <main className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-3xl overflow-hidden backdrop-blur-lg shadow-2xl relative">
+      <main className="flex-1 min-w-0 bg-card border border-border rounded-3xl overflow-hidden backdrop-blur-lg shadow-sm relative">
         <Outlet />
       </main>
 

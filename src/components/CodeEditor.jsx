@@ -75,6 +75,7 @@ const CodeEditor = ({
   // Deliberately NOT bumped on auto-save to prevent cursor jumping
   forceContentKey = 0,
   onLocalChange,
+  isPlayground = false,
 }) => {
   const { theme: appTheme } = useTheme();
   const [content, setContent] = useState('');
@@ -674,8 +675,12 @@ const CodeEditor = ({
       codeRef.current[currentFileId] = newValue;
     }
 
-    // Mark file as dirty (only triggers re-render once, React bails out on subsequent calls)
-    setIsDirtyState(true);
+    // Mark file as dirty only if content differs from the last saved state
+    if (newValue === lastSavedContentRef.current) {
+      setIsDirtyState(false);
+    } else {
+      setIsDirtyState(true);
+    }
 
     if (onLocalChange && currentFileId) {
       onLocalChange(currentFileId, newValue);
@@ -745,6 +750,7 @@ const CodeEditor = ({
         setIsSaving(true);
         setTimeout(() => {
           setIsSaving(false);
+          setLastSavedTime(new Date());
           toast.success('File saved');
         }, 300);
       }
@@ -806,6 +812,7 @@ const CodeEditor = ({
 =======
     const d = new Date(date);
     if (isNaN(d.getTime())) return '';
+<<<<<<< HEAD
     return d.toLocaleTimeString('en-IN', {
       timeZone: 'Asia/Kolkata',
       hour: '2-digit',
@@ -813,6 +820,39 @@ const CodeEditor = ({
       second: '2-digit',
       hour12: true,
     });
+>>>>>>> dev
+=======
+    
+    let hours = d.getHours();
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const seconds = String(d.getSeconds()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const formattedHours = String(hours).padStart(2, '0');
+    
+    return `${formattedHours}:${minutes}:${seconds} ${ampm}`;
+  };
+
+  const formatSessionTime = (date) => {
+    if (!date) return '';
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return '';
+    
+    const day = String(d.getDate()).padStart(2, '0');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = months[d.getMonth()];
+    const year = String(d.getFullYear()).slice(-2);
+    
+    let hours = d.getHours();
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const seconds = String(d.getSeconds()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const formattedHours = String(hours).padStart(2, '0');
+    
+    return `${day} ${month} ${year}, ${formattedHours}:${minutes}:${seconds} ${ampm}`;
 >>>>>>> dev
   };
 
@@ -834,7 +874,7 @@ const CodeEditor = ({
         
         <div className="flex items-center gap-3 overflow-x-auto scrollbar-thin flex-shrink-0 max-w-[70%] py-1">
           {/* Collaboration Bar */}
-          {!readOnly && (
+          {!readOnly && !isPlayground && (
             <div className="flex-shrink-0">
               <CollaborationBar
                 session={collabSession}
@@ -948,10 +988,14 @@ const CodeEditor = ({
         <div className="flex items-center gap-2 text-muted">
           <Clock size={14} />
           <span>
-            {collabSession ? 'Collab Session' : 'Local Session'} Started:
+            Session Started:
           </span>
           <span>
+<<<<<<< HEAD
             {formatSavedTime(collabSession?.createdAt || sessionMountTimeRef.current)}
+>>>>>>> dev
+=======
+            {formatSessionTime(collabSession?.createdAt || sessionMountTimeRef.current)}
 >>>>>>> dev
           </span>
         </div>

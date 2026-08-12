@@ -163,7 +163,7 @@ const ChatPanel = ({
                       <div
                         className={`px-3.5 py-2 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words ${
                           isMe
-                            ? 'bg-gradient-to-br from-primary to-indigo-600 text-white rounded-tr-none'
+                            ? 'bg-primary text-white rounded-tr-none'
                             : 'bg-white/5 border border-white/5 text-main rounded-tl-none'
                         }`}
                       >
